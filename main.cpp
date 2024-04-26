@@ -1,3 +1,4 @@
+//hello
 #include "widget.h"
 
 #include <QApplication>
