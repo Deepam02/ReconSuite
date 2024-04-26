@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/img">
+        <file>Logo_reconsuite.png</file>
+        <file>reconsuitelogo.jpg</file>
+    </qresource>
+</RCC>
