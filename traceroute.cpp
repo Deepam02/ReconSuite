@@ -1,3 +1,5 @@
+// traceroute.cpp
+
 #include "traceroute.h"
 #include "ui_traceroute.h"
 #include <QVBoxLayout>
@@ -17,11 +19,19 @@ traceroute::traceroute(QWidget *parent)
     clearButton = new QPushButton("Clear", this);
     outputArea = new QTextEdit(this);
     traceProcess = new QProcess(this);
+    commandComboBox = new QComboBox(this);
+    commandComboBox->addItem("Default");
+    commandComboBox->addItem("-m");
+    commandComboBox->addItem("-f");
+    commandComboBox->addItem("-F");
+    optionInput = new QLineEdit(this);
+    optionInput->setPlaceholderText("Option Value");
+    optionLabel = new QLabel("Option:", this);
 
     connect(traceButton, &QPushButton::clicked, this, &traceroute::onTraceButtonClicked);
     connect(clearButton, &QPushButton::clicked, this, &traceroute::onClearButtonClicked);
-
     connect(domainInput, &QLineEdit::returnPressed, this, &traceroute::onTraceButtonClicked);
+    connect(commandComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &traceroute::updateCommand);
 
     connect(traceProcess, &QProcess::readyReadStandardOutput, [=]() {
         outputArea->append(traceProcess->readAllStandardOutput());
@@ -30,11 +40,14 @@ traceroute::traceroute(QWidget *parent)
     connect(traceProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             [=](int exitCode, QProcess::ExitStatus exitStatus) {
                 outputArea->append("\nTraceroute command finished with exit code: " + QString::number(exitCode));
-                traceButton->setDisabled(false);
+                traceButton->setEnabled(true);
             });
 
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->addWidget(domainInput);
+    layout->addWidget(commandComboBox);
+    layout->addWidget(optionLabel);
+    layout->addWidget(optionInput);
     layout->addWidget(traceButton);
     layout->addWidget(clearButton);
     layout->addWidget(outputArea);
@@ -59,16 +72,29 @@ bool traceroute::isValidInput(const QString &input)
     return domainPattern.match(input).hasMatch();
 }
 
-QString traceSystem(const QString& host) {
-    QString command = "traceroute " + host;
-    QProcess traceProcess;
+QString traceSystem(const QString& host, const QString& option, const QString& optionValue)
+{
     QStringList arguments;
-    arguments << host;
+    if (option == "Default") {
+        arguments << host;
+    } else if (option == "-m" || option == "-f" || option == "-F") {
+        if (!optionValue.isEmpty()) {
+            arguments << option << optionValue << host;
+        } else {
+            arguments << option << host;
+        }
+    } else {
+        arguments << option << host;
+    }
+
+    QProcess traceProcess;
     traceProcess.start("traceroute", arguments);
     traceProcess.waitForFinished();
 
     return traceProcess.readAllStandardOutput();
 }
+
+
 
 void traceroute::onTraceButtonClicked()
 {
@@ -76,12 +102,19 @@ void traceroute::onTraceButtonClicked()
     outputArea->append("Tracing... Please wait.");
 
     QString domain = domainInput->text();
+    QString option = commandComboBox->currentText();
+    QString optionValue = optionInput->text();
+
+    if ((option == "-m" || option == "-f" || option == "-F") && optionValue.isEmpty()) {
+        outputArea->append("Please provide a value for the option.");
+        return;
+    }
 
     if (isValidInput(domain))
     {
         // Start trace process asynchronously
         QFuture<void> future = QtConcurrent::run([=]() {
-            QString result = traceSystem(domain);
+            QString result = traceSystem(domain, option, optionValue);
 
             // Update GUI in the main thread
             QMetaObject::invokeMethod(this, "updateOutput", Qt::QueuedConnection,
@@ -93,6 +126,8 @@ void traceroute::onTraceButtonClicked()
         outputArea->append("Enter a valid Domain or IP Address");
     }
 }
+
+
 
 void traceroute::updateOutput(const QString& result)
 {
@@ -107,4 +142,21 @@ void traceroute::onClearButtonClicked()
 {
     outputArea->clear();
     domainInput->clear();
+}
+
+void traceroute::updateCommand()
+{
+    QString option = commandComboBox->currentText();
+    if (option == "Default") {
+        optionInput->clear();
+        toggleOptionInput(false);
+    } else {
+        toggleOptionInput(true);
+    }
+}
+
+void traceroute::toggleOptionInput(bool state)
+{
+    optionLabel->setVisible(state);
+    optionInput->setVisible(state);
 }
