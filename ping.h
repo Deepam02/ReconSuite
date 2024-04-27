@@ -1,12 +1,12 @@
 #ifndef PING_H
 #define PING_H
 
-#include <QWidget>
+#include <QComboBox>
 #include <QLineEdit>
+#include <QProcess>
 #include <QPushButton>
 #include <QTextEdit>
-#include <QProcess>
-#include <QComboBox>
+#include <QWidget>
 
 namespace Ui {
 class ping;
@@ -25,9 +25,9 @@ private slots:
     void onClearButtonClicked();
     void updateOutput(const QString &result);
     void onModeChanged(int index);
-    void onLoadButtonClicked(QString cmdvariable);
     void executeCommand();
-    void updateCommandOutput(const QString& result);
+    void updateCommandOutput(const QString &result);
+    void updateCommandDisplay();
 
 private:
     Ui::ping *ui;
@@ -44,10 +44,10 @@ private:
     void setupUI();
     void setupConnections();
     void setLayoutAndTitle();
-    QLineEdit* createLineEdit(const QString& placeholder);
-    QPushButton* createButton(const QString& text);
-    QComboBox* createComboBox(const QStringList& items);
-    bool isValidInput(const QString& input);
+    QLineEdit *createLineEdit(const QString &placeholder);
+    QPushButton *createButton(const QString &text);
+    QComboBox *createComboBox(const QStringList &items);
+    bool isValidInput(const QString &input);
     void standardMode();
     void verboseMode();
     void floodingMode();

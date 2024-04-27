@@ -25,7 +25,6 @@ void ping::setupUI()
     packetCountInput = createLineEdit("Enter packet count");
     pingButton = createButton("Ping");
     clearButton = createButton("Clear");
-    loadCmdButton = createButton("Load");
     outputArea = new QTextEdit(this);
     modeComboBox = createComboBox({"Select Mode", "Standard Mode", "Verbose Output", "Flooding"});
     commandDisplay = createLineEdit("Command will be displayed here");
@@ -37,7 +36,6 @@ void ping::setupConnections()
     connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ping::onModeChanged);
     connect(pingButton, &QPushButton::clicked, this, &ping::executeCommand);
     connect(clearButton, &QPushButton::clicked, this, &ping::onClearButtonClicked);
-    connect(loadCmdButton, &QPushButton::clicked, this, [=]() { onLoadButtonClicked(commandDisplay->text()); });
     connect(domainInput, &QLineEdit::returnPressed, this, &ping::onPingButtonClicked);
     connect(packetCountInput, &QLineEdit::returnPressed, this, &ping::onPingButtonClicked);
     connect(commandDisplay, &QLineEdit::returnPressed, this, &ping::executeCommand);
@@ -47,6 +45,9 @@ void ping::setupConnections()
                 outputArea->append("\nPing command finished with exit code: " + QString::number(exitCode));
                 pingButton->setEnabled(true);
             });
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ping::updateCommandDisplay);
+    connect(domainInput, &QLineEdit::textChanged, this, &ping::updateCommandDisplay);
+    connect(packetCountInput, &QLineEdit::textChanged, this, &ping::updateCommandDisplay);
 }
 
 void ping::setLayoutAndTitle()
@@ -55,7 +56,6 @@ void ping::setLayoutAndTitle()
     layout->addWidget(modeComboBox);
     layout->addWidget(domainInput);
     layout->addWidget(packetCountInput);
-    layout->addWidget(loadCmdButton);
     layout->addWidget(commandDisplay);
     layout->addWidget(pingButton);
     layout->addWidget(clearButton);
@@ -154,10 +154,17 @@ void ping::onClearButtonClicked()
 
 void ping::executeCommand()
 {
+    outputArea->clear();
     QString command = commandDisplay->text();
 
     if (command.isEmpty()) {
         outputArea->append("Command is empty.");
+        return;
+    }
+
+    // Validate that the command contains the "ping" keyword
+    if (!command.contains("ping", Qt::CaseInsensitive)) {
+        outputArea->append("Invalid command. Only 'ping' command is allowed.");
         return;
     }
 
@@ -229,27 +236,6 @@ void ping::updateCommandOutput(const QString& result)
     outputArea->append(result);
 }
 
-void ping::onLoadButtonClicked(QString cmdvariable)
-{
-    QString domain = domainInput->text();
-    QString packetCountStr = packetCountInput->text();
-    bool ok;
-    int count = packetCountStr.toInt(&ok);
-
-    if (isValidInput(domain)) {
-        QString modeText;
-        switch (modeComboBox->currentIndex()) {
-        case 1: modeText = QString("ping %1 -c %2").arg(domain).arg(count); break;
-        case 2: modeText = QString("ping -v -D %1 -c %2").arg(domain).arg(count); break;
-        case 3: modeText = QString("ping %1 -c 100 -i 0.1").arg(domain); break;
-        default: outputArea->append("Select a mode first."); return;
-        }
-        commandDisplay->setText(modeText);
-    } else {
-        outputArea->append("Enter a valid Domain or IP Address");
-    }
-}
-
 void ping::standardMode() { packetCountInput->show(); }
 void ping::verboseMode() { packetCountInput->show(); }
 void ping::floodingMode() { packetCountInput->hide(); }
@@ -262,5 +248,27 @@ void ping::onModeChanged(int index)
     case 2: verboseMode(); break;
     case 3: floodingMode(); break;
     default: break;
+    }
+    updateCommandDisplay();
+}
+
+void ping::updateCommandDisplay()
+{
+    QString domain = domainInput->text();
+    QString packetCountStr = packetCountInput->text();
+    bool ok;
+    int count = packetCountStr.toInt(&ok);
+
+    if (isValidInput(domain)) {
+        QString modeText;
+        switch (modeComboBox->currentIndex()) {
+        case 1: modeText = QString("ping %1 -c %2").arg(domain).arg(count); break;
+        case 2: modeText = QString("ping -v -D %1 -c %2").arg(domain).arg(count); break;
+        case 3: modeText = QString("ping %1 -c 100 -i 0.1").arg(domain); break;
+        default: commandDisplay->clear(); return;
+        }
+        commandDisplay->setText(modeText);
+    } else {
+        commandDisplay->clear();
     }
 }
