@@ -1,5 +1,3 @@
-// traceroute.cpp
-
 #include "traceroute.h"
 #include "ui_traceroute.h"
 #include <QVBoxLayout>
@@ -18,12 +16,14 @@ traceroute::traceroute(QWidget *parent)
     traceButton = new QPushButton("Trace", this);
     clearButton = new QPushButton("Clear", this);
     outputArea = new QTextEdit(this);
+    commandOutput = new QTextEdit(this);
     traceProcess = new QProcess(this);
     commandComboBox = new QComboBox(this);
     commandComboBox->addItem("Default");
-    commandComboBox->addItem("-m");
-    commandComboBox->addItem("-f");
-    commandComboBox->addItem("-F");
+    commandComboBox->addItem("-m : Set the max number of hops");
+    commandComboBox->addItem("-f : Start from the first TTL hop");
+    commandComboBox->addItem("-F : Do not fragment packet");
+
     optionInput = new QLineEdit(this);
     optionInput->setPlaceholderText("Option Value");
     optionLabel = new QLabel("Option:", this);
@@ -51,15 +51,20 @@ traceroute::traceroute(QWidget *parent)
     layout->addWidget(traceButton);
     layout->addWidget(clearButton);
     layout->addWidget(outputArea);
+    layout->addWidget(commandOutput);
 
     setLayout(layout);
 
     setWindowTitle("Traceroute Tool");
     outputArea->setReadOnly(true);
+    commandOutput->setReadOnly(true);
+
+    // Initially, hide the option input
+    optionLabel->setVisible(false);
+    optionInput->setVisible(false);
 }
 
-traceroute::~traceroute()
-{
+traceroute::~traceroute(){
     delete ui;
 }
 
@@ -77,13 +82,14 @@ QString traceSystem(const QString& host, const QString& option, const QString& o
     QStringList arguments;
     if (option == "Default") {
         arguments << host;
-    } else if (option == "-m" || option == "-f" || option == "-F") {
+    } else if (option == "-m" || option == "-f") {
         if (!optionValue.isEmpty()) {
             arguments << option << optionValue << host;
         } else {
             arguments << option << host;
         }
-    } else {
+    }
+    else {
         arguments << option << host;
     }
 
@@ -94,8 +100,6 @@ QString traceSystem(const QString& host, const QString& option, const QString& o
     return traceProcess.readAllStandardOutput();
 }
 
-
-
 void traceroute::onTraceButtonClicked()
 {
     outputArea->clear();
@@ -105,7 +109,7 @@ void traceroute::onTraceButtonClicked()
     QString option = commandComboBox->currentText();
     QString optionValue = optionInput->text();
 
-    if ((option == "-m" || option == "-f" || option == "-F") && optionValue.isEmpty()) {
+    if ((option == "-m" || option == "-f") && optionValue.isEmpty()) {
         outputArea->append("Please provide a value for the option.");
         return;
     }
@@ -127,8 +131,6 @@ void traceroute::onTraceButtonClicked()
     }
 }
 
-
-
 void traceroute::updateOutput(const QString& result)
 {
     // Remove the "Tracing..." message
@@ -136,27 +138,44 @@ void traceroute::updateOutput(const QString& result)
 
     // Append the actual trace result
     outputArea->append(result);
+
+    // Update command output
+    QString command = "traceroute ";
+    QString option = commandComboBox->currentText();
+    QString optionValue = optionInput->text();
+    if (option == "-m" || option == "-f" || option == "-F") {
+        if (!optionValue.isEmpty()) {
+            command += option + " " + optionValue + " " + domainInput->text();
+        }
+        else {
+            command += option + " " + domainInput->text();
+        }
+    } else {
+        command += domainInput->text();
+    }
+    commandOutput->setText(command);
 }
 
 void traceroute::onClearButtonClicked()
 {
     outputArea->clear();
     domainInput->clear();
+    optionInput->clear();
+    commandOutput->clear();
+    commandComboBox->setCurrentIndex(0);
 }
 
-void traceroute::updateCommand()
-{
+void traceroute::updateCommand(){
     QString option = commandComboBox->currentText();
-    if (option == "Default") {
+    if (option == "Default" || option == "-F") {
         optionInput->clear();
-        toggleOptionInput(false);
-    } else {
-        toggleOptionInput(true);
+        optionLabel->setVisible(false);
+        optionInput->setVisible(false);
     }
-}
+    else {
+        optionLabel->setVisible(true);
+        optionInput->setVisible(true);
+    }
 
-void traceroute::toggleOptionInput(bool state)
-{
-    optionLabel->setVisible(state);
-    optionInput->setVisible(state);
+    updateOutput(""); // Update command output when the option changes
 }

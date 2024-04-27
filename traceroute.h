@@ -28,7 +28,6 @@ private slots:
     void onClearButtonClicked();
     void updateOutput(const QString &result);
     void updateCommand();
-    void toggleOptionInput(bool state);
 
 private:
     Ui::traceroute *ui;
@@ -36,6 +35,7 @@ private:
     QPushButton *traceButton;
     QPushButton *clearButton;
     QTextEdit *outputArea;
+    QTextEdit *commandOutput;
     QProcess *traceProcess;
     QComboBox *commandComboBox;
     QLineEdit *optionInput;
