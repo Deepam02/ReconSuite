@@ -1,4 +1,4 @@
-//hello testing feature
+//hello testing feature for git
 #include "widget.h"
 
 #include <QApplication>
