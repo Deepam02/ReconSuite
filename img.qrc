@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/img">
+        <file>reconsuitelogo.jpg</file>
+        <file>Logo_reconsuite.png</file>
+        <file>spinner-1.gif</file>
+    </qresource>
+</RCC>

@@ -8,6 +8,7 @@
 #include <QProcess>
 #include <QComboBox>
 
+
 namespace Ui {
 class nmap;
 }
@@ -25,6 +26,7 @@ private slots:
     void executeCommand();
     void updateCommandOutput(const QString& result);
     void updateCommandDisplay();
+
 
 private:
     Ui::nmap *ui;

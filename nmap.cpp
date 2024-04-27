@@ -30,7 +30,7 @@ void Nmap::initializeUI()
     clearButton = createButton("Clear");
     outputArea = new QTextEdit(this);
     commandDisplay = createLineEdit("Command will be displayed here");
-    modeComboBox = createComboBox({"Select Mode", "Intense Scan", "Quick Scan", "Stealth Scan"});
+    modeComboBox = createComboBox({"Select Mode", "Regular Scan", "Quick Scan", "Quick Scan with ping probe", "Intense Scan", "Intense Scan with ping probe"});
 
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->addWidget(targetInput);
@@ -52,15 +52,6 @@ void Nmap::connectSignalsSlots()
     connect(targetInput, &QLineEdit::textChanged, this, &Nmap::updateCommandDisplay);
     connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Nmap::updateCommandDisplay);
 
-    // connect(scanProcess, &QProcess::readyReadStandardOutput, [=]() {
-    //     outputArea->append(scanProcess->readAllStandardOutput());
-    // });
-
-    // connect(scanProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-    //         [=](int exitCode, QProcess::ExitStatus exitStatus) {
-    //             outputArea->append("\nScan command finished with exit code: " + QString::number(exitCode));
-    //             scanButton->setEnabled(true);
-    //         });
 }
 
 QLineEdit *Nmap::createLineEdit(const QString &placeholder)
@@ -106,9 +97,9 @@ void Nmap::executeCommand()
 
     outputArea->clear();
     outputArea->append("Executing command: " + command);
+    QApplication::setOverrideCursor(Qt::WaitCursor);
 
     QStringList args = command.split(" ");
-    QString shell = "/bin/sh";
 
     QtConcurrent::run([=]() {
         QProcess process;
@@ -131,19 +122,9 @@ void Nmap::executeCommand()
         {
             updateCommandOutput("Error: " + error);
         }
-
+        QApplication::restoreOverrideCursor();
         updateCommandOutput("Output:\n" + output);
 
-        // Display the number of open ports
-        QRegularExpression portRegex("(\\d+)\\/open");
-        QRegularExpressionMatchIterator matches = portRegex.globalMatch(output);
-        int openPortsCount = 0;
-        while (matches.hasNext())
-        {
-            matches.next();
-            openPortsCount++;
-        }
-        updateCommandOutput("Number of open ports found: " + QString::number(openPortsCount));
 
         // Adding time measurement using QElapsedTimer
         QString timeOutput = "Time taken: " + QString::number(timer.elapsed()) + " ms";
@@ -164,17 +145,25 @@ void Nmap::updateCommandDisplay()
     if (isValidInput(target))
     {
         QString modeText;
-        if (mode == "Intense Scan")
-        {
-            modeText = QString("nmap -A %1").arg(target);
-        }
-        else if (mode == "Quick Scan")
+        if (mode == "Regular Scan")
         {
             modeText = QString("nmap %1").arg(target);
         }
-        else if (mode == "Stealth Scan")
+        else if (mode == "Quick Scan")
         {
-            modeText = QString("nmap -sS %1").arg(target);
+            modeText = QString("nmap -T4 -F %1").arg(target);
+        }
+        else if (mode == "Intense Scan")
+        {
+            modeText = QString("nmap -T4 -A -v %1").arg(target);
+        }
+        else if(mode == "Quick Scan with ping probe")
+        {
+            modeText = QString("nmap -T4 -F -Pn %1").arg(target);
+        }
+        else if(mode == "Intense Scan with ping probe")
+        {
+            modeText = QString("nmap -T4 -A -v -Pn %1").arg(target);
         }
         commandDisplay->setText(modeText);
     }
@@ -183,3 +172,5 @@ void Nmap::updateCommandDisplay()
         commandDisplay->clear();
     }
 }
+
+

@@ -28,7 +28,6 @@ void ping::setupUI()
     outputArea = new QTextEdit(this);
     modeComboBox = createComboBox({"Select Mode", "Standard Mode", "Verbose Output", "Flooding"});
     commandDisplay = createLineEdit("Command will be displayed here");
-    pingProcess = new QProcess(this);
 }
 
 void ping::setupConnections()
@@ -36,15 +35,9 @@ void ping::setupConnections()
     connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ping::onModeChanged);
     connect(pingButton, &QPushButton::clicked, this, &ping::executeCommand);
     connect(clearButton, &QPushButton::clicked, this, &ping::onClearButtonClicked);
-    connect(domainInput, &QLineEdit::returnPressed, this, &ping::onPingButtonClicked);
-    connect(packetCountInput, &QLineEdit::returnPressed, this, &ping::onPingButtonClicked);
+    connect(domainInput, &QLineEdit::returnPressed, this, &ping::executeCommand);
+    connect(packetCountInput, &QLineEdit::returnPressed, this, &ping::executeCommand);
     connect(commandDisplay, &QLineEdit::returnPressed, this, &ping::executeCommand);
-    connect(pingProcess, &QProcess::readyReadStandardOutput, [=]() { outputArea->append(pingProcess->readAllStandardOutput()); });
-    connect(pingProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            [=](int exitCode, QProcess::ExitStatus exitStatus) {
-                outputArea->append("\nPing command finished with exit code: " + QString::number(exitCode));
-                pingButton->setEnabled(true);
-            });
     connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ping::updateCommandDisplay);
     connect(domainInput, &QLineEdit::textChanged, this, &ping::updateCommandDisplay);
     connect(packetCountInput, &QLineEdit::textChanged, this, &ping::updateCommandDisplay);
@@ -92,51 +85,7 @@ bool ping::isValidInput(const QString& input)
     return domainPattern.match(input).hasMatch();
 }
 
-QString pingSystem(const QString& host, int count)
-{
-    QString command = "ping " + host + " -c " + QString::number(count);
-    QProcess pingProcess;
-    QStringList arguments;
-    arguments << "-c" << QString::number(count) << host;
-    pingProcess.start("ping", arguments);
-    pingProcess.waitForFinished();
-    QString output = pingProcess.readAllStandardOutput();
-    QRegularExpression regex("(\\d+) packets transmitted, (\\d+) received");
-    QRegularExpressionMatch match = regex.match(output);
 
-    if (match.hasMatch()) {
-        int transmitted = match.captured(1).toInt();
-        int received = match.captured(2).toInt();
-        return (transmitted > 0 && received > 0) ? (command + "\nSystem is UP (running)") : (command + "\nSystem is DOWN (not working)");
-    } else {
-        return "Failed to parse ping output for command: " + command;
-    }
-}
-
-void ping::onPingButtonClicked()
-{
-    outputArea->clear();
-    outputArea->append("Pinging... Please wait.");
-
-    QString domain = domainInput->text();
-    QString packetCountStr = packetCountInput->text();
-    bool ok;
-    int count = packetCountStr.toInt(&ok);
-
-    if (!ok || count <= 0) {
-        outputArea->append("Enter a valid packet count.");
-        return;
-    }
-
-    if (isValidInput(domain)) {
-        QtConcurrent::run([=]() {
-            QString result = pingSystem(domain, count);
-            QMetaObject::invokeMethod(this, "updateOutput", Qt::QueuedConnection, Q_ARG(QString, result));
-        });
-    } else {
-        outputArea->append("Enter a valid Domain or IP Address");
-    }
-}
 
 void ping::updateOutput(const QString& result)
 {
@@ -169,6 +118,7 @@ void ping::executeCommand()
     }
 
     outputArea->clear();
+    QApplication::setOverrideCursor(Qt::WaitCursor);
     outputArea->append("Executing command: " + command);
 
     QStringList args = {"-c", command};
@@ -209,6 +159,7 @@ void ping::executeCommand()
                     if (transmitted > 0 && received > 0) {
                         QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
                                                   Q_ARG(QString, "System is UP"));
+                        QApplication::restoreOverrideCursor();
                         return;
                     }
                 }
@@ -223,7 +174,7 @@ void ping::executeCommand()
                                       Q_ARG(QString, "Output:\n" + output));
         }
 
-        // Adding time measurement using QElapsedTimer
+        QApplication::restoreOverrideCursor();
         QString timeOutput = "Time taken: " + QString::number(timer.elapsed()) + " ms";
         QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
                                   Q_ARG(QString, timeOutput));

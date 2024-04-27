@@ -3,4 +3,7 @@
         <file>Logo_reconsuite.png</file>
         <file>reconsuitelogo.jpg</file>
     </qresource>
+    <qresource prefix="/">
+        <file>../../Desktop/spinner-1.gif</file>
+    </qresource>
 </RCC>

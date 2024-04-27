@@ -21,7 +21,6 @@ public:
     ~ping();
 
 private slots:
-    void onPingButtonClicked();
     void onClearButtonClicked();
     void updateOutput(const QString &result);
     void onModeChanged(int index);
@@ -37,7 +36,6 @@ private:
     QPushButton *loadCmdButton;
     QLineEdit *packetCountInput;
     QTextEdit *outputArea;
-    QProcess *pingProcess;
     QComboBox *modeComboBox;
     QLineEdit *commandDisplay;
 
