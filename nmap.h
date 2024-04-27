@@ -22,26 +22,25 @@ public:
 
 private slots:
     void onClearButtonClicked();
-    void onLoadButtonClicked();
     void executeCommand();
     void updateCommandOutput(const QString& result);
+    void updateCommandDisplay();
 
 private:
     Ui::nmap *ui;
     QLineEdit *targetInput;
-    QLineEdit *passwordInput;
     QPushButton *scanButton;
     QPushButton *clearButton;
-    QPushButton *loadCmdButton; // New load button
     QTextEdit *outputArea;
-    QLineEdit *commandDisplay;  // New command display box
-    QComboBox *modeComboBox;    // New combo box for scan modes
-    QProcess *scanProcess;
+    QLineEdit *commandDisplay;
+    QComboBox *modeComboBox;
 
     bool isValidInput(const QString &input);
     QLineEdit* createLineEdit(const QString& placeholder);
     QPushButton* createButton(const QString& text);
     QComboBox* createComboBox(const QStringList& items);
+    void initializeUI();
+    void connectSignalsSlots();
 };
 
 #endif // NMAP_H

@@ -1,9 +1,7 @@
 #include "nmap.h"
 #include "ui_nmap.h"
 #include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QtConcurrent>
-
 
 Nmap::Nmap(QWidget *parent)
     : QWidget(parent),
@@ -12,44 +10,9 @@ Nmap::Nmap(QWidget *parent)
     ui->setupUi(this);
     resize(800, 650);
 
-    targetInput = createLineEdit("Enter target IP range");
-    scanButton = createButton("Scan");
-    passwordInput = createLineEdit("enter root password");
-    clearButton = createButton("Clear");
-    loadCmdButton = createButton("Load");
-    outputArea = new QTextEdit(this);
-    commandDisplay = createLineEdit("Command will be displayed here");
-    scanProcess = new QProcess(this);
-    modeComboBox = createComboBox({"Select Mode", "Intense Scan", "Quick Scan", "Stealth Scan"});
+    initializeUI();
 
-    connect(scanButton, &QPushButton::clicked, this, &Nmap::executeCommand);
-    connect(clearButton, &QPushButton::clicked, this, &Nmap::onClearButtonClicked);
-    connect(loadCmdButton, &QPushButton::clicked, this, &Nmap::onLoadButtonClicked);
-
-    connect(targetInput, &QLineEdit::returnPressed, this, &Nmap::executeCommand);
-    connect(commandDisplay, &QLineEdit::returnPressed, this, &Nmap::executeCommand);
-
-    connect(scanProcess, &QProcess::readyReadStandardOutput, [=]() {
-        outputArea->append(scanProcess->readAllStandardOutput());
-    });
-
-    connect(scanProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            [=](int exitCode, QProcess::ExitStatus exitStatus) {
-                outputArea->append("\nScan command finished with exit code: " + QString::number(exitCode));
-                scanButton->setEnabled(true);
-            });
-
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->addWidget(targetInput);
-    layout->addWidget(passwordInput);
-    layout->addWidget(modeComboBox);
-    layout->addWidget(scanButton);
-    layout->addWidget(clearButton);
-    layout->addWidget(loadCmdButton);
-    layout->addWidget(commandDisplay);
-    layout->addWidget(outputArea);
-
-    setLayout(layout);
+    connectSignalsSlots();
 
     setWindowTitle("Network Scanner");
     outputArea->setReadOnly(true);
@@ -60,21 +23,61 @@ Nmap::~Nmap()
     delete ui;
 }
 
-QLineEdit* Nmap::createLineEdit(const QString& placeholder)
+void Nmap::initializeUI()
 {
-    QLineEdit* lineEdit = new QLineEdit(this);
+    targetInput = createLineEdit("Enter target IP range");
+    scanButton = createButton("Scan");
+    clearButton = createButton("Clear");
+    outputArea = new QTextEdit(this);
+    commandDisplay = createLineEdit("Command will be displayed here");
+    modeComboBox = createComboBox({"Select Mode", "Intense Scan", "Quick Scan", "Stealth Scan"});
+
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    layout->addWidget(targetInput);
+    layout->addWidget(modeComboBox);
+    layout->addWidget(scanButton);
+    layout->addWidget(clearButton);
+    layout->addWidget(commandDisplay);
+    layout->addWidget(outputArea);
+
+    setLayout(layout);
+}
+
+void Nmap::connectSignalsSlots()
+{
+    connect(scanButton, &QPushButton::clicked, this, &Nmap::executeCommand);
+    connect(commandDisplay, &QLineEdit::returnPressed, this, &Nmap::executeCommand);
+    connect(clearButton, &QPushButton::clicked, this, &Nmap::onClearButtonClicked);
+
+    connect(targetInput, &QLineEdit::textChanged, this, &Nmap::updateCommandDisplay);
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Nmap::updateCommandDisplay);
+
+    // connect(scanProcess, &QProcess::readyReadStandardOutput, [=]() {
+    //     outputArea->append(scanProcess->readAllStandardOutput());
+    // });
+
+    // connect(scanProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+    //         [=](int exitCode, QProcess::ExitStatus exitStatus) {
+    //             outputArea->append("\nScan command finished with exit code: " + QString::number(exitCode));
+    //             scanButton->setEnabled(true);
+    //         });
+}
+
+QLineEdit *Nmap::createLineEdit(const QString &placeholder)
+{
+    QLineEdit *lineEdit = new QLineEdit(this);
     lineEdit->setPlaceholderText(placeholder);
     return lineEdit;
 }
 
-QPushButton* Nmap::createButton(const QString& text)
+QPushButton *Nmap::createButton(const QString &text)
 {
     return new QPushButton(text, this);
 }
 
-QComboBox* Nmap::createComboBox(const QStringList& items)
+QComboBox *Nmap::createComboBox(const QStringList &items)
 {
-    QComboBox* comboBox = new QComboBox(this);
+    QComboBox *comboBox = new QComboBox(this);
     comboBox->addItems(items);
     return comboBox;
 }
@@ -83,8 +86,6 @@ bool Nmap::isValidInput(const QString &input)
 {
     return !input.isEmpty();
 }
-
-
 
 void Nmap::onClearButtonClicked()
 {
@@ -97,7 +98,8 @@ void Nmap::executeCommand()
 {
     QString command = commandDisplay->text();
 
-    if (command.isEmpty()) {
+    if (command.isEmpty())
+    {
         outputArea->append("Command is empty.");
         return;
     }
@@ -120,49 +122,43 @@ void Nmap::executeCommand()
         QString output = process.readAllStandardOutput();
         QString error = process.readAllStandardError();
 
-        if (exitCode != 0) {
-            QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                      Q_ARG(QString, "Command execution failed with exit code: " + QString::number(exitCode)));
+        if (exitCode != 0)
+        {
+            updateCommandOutput("Command execution failed with exit code: " + QString::number(exitCode));
         }
 
-        if (!error.isEmpty()) {
-            QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                      Q_ARG(QString, "Error: " + error));
+        if (!error.isEmpty())
+        {
+            updateCommandOutput("Error: " + error);
         }
 
-        QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                  Q_ARG(QString, "Output:\n" + output));
+        updateCommandOutput("Output:\n" + output);
 
         // Display the number of open ports
         QRegularExpression portRegex("(\\d+)\\/open");
         QRegularExpressionMatchIterator matches = portRegex.globalMatch(output);
         int openPortsCount = 0;
-        while (matches.hasNext()) {
+        while (matches.hasNext())
+        {
             matches.next();
             openPortsCount++;
         }
-        QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                  Q_ARG(QString, "Number of open ports found: " + QString::number(openPortsCount)));
+        updateCommandOutput("Number of open ports found: " + QString::number(openPortsCount));
 
         // Adding time measurement using QElapsedTimer
         QString timeOutput = "Time taken: " + QString::number(timer.elapsed()) + " ms";
-        QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                  Q_ARG(QString, timeOutput));
+        updateCommandOutput(timeOutput);
     });
 }
 
-
-void Nmap::updateCommandOutput(const QString& result)
+void Nmap::updateCommandOutput(const QString &result)
 {
     outputArea->append(result);
 }
 
-
-
-void Nmap::onLoadButtonClicked()
+void Nmap::updateCommandDisplay()
 {
     QString target = targetInput->text();
-    QString password = passwordInput->text();
     QString mode = modeComboBox->currentText();
 
     if (isValidInput(target))
@@ -170,7 +166,7 @@ void Nmap::onLoadButtonClicked()
         QString modeText;
         if (mode == "Intense Scan")
         {
-            modeText = QString("echo %1 | nmap -A %2").arg(password,target);
+            modeText = QString("nmap -A %1").arg(target);
         }
         else if (mode == "Quick Scan")
         {
@@ -184,6 +180,6 @@ void Nmap::onLoadButtonClicked()
     }
     else
     {
-        outputArea->append("Enter a valid target IP range");
+        commandDisplay->clear();
     }
 }
