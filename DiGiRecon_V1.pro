@@ -11,6 +11,7 @@ CONFIG += c++17
 SOURCES += \
     dig.cpp \
     dnsenum.cpp \
+    ffuf.cpp \
     main.cpp \
     nmap.cpp \
     nslookup.cpp \
@@ -23,6 +24,7 @@ SOURCES += \
 HEADERS += \
     dig.h \
     dnsenum.h \
+    ffuf.h \
     nmap.h \
     nslookup.h \
     ping.h \
@@ -34,6 +36,7 @@ HEADERS += \
 FORMS += \
     dig.ui \
     dnsenum.ui \
+    ffuf.ui \
     nmap.ui \
     nslookup.ui \
     ping.ui \

@@ -33,8 +33,8 @@ void Nmap::initializeUI()
     modeComboBox = createComboBox({"Select Mode", "Regular Scan", "Quick Scan", "Quick Scan with ping probe", "Intense Scan", "Intense Scan with ping probe"});
 
     QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->addWidget(targetInput);
     layout->addWidget(modeComboBox);
+    layout->addWidget(targetInput);
     layout->addWidget(scanButton);
     layout->addWidget(clearButton);
     layout->addWidget(commandDisplay);
@@ -47,6 +47,7 @@ void Nmap::connectSignalsSlots()
 {
     connect(scanButton, &QPushButton::clicked, this, &Nmap::executeCommand);
     connect(commandDisplay, &QLineEdit::returnPressed, this, &Nmap::executeCommand);
+    connect(targetInput, &QLineEdit::returnPressed, this, &Nmap::executeCommand);
     connect(clearButton, &QPushButton::clicked, this, &Nmap::onClearButtonClicked);
 
     connect(targetInput, &QLineEdit::textChanged, this, &Nmap::updateCommandDisplay);

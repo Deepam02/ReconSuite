@@ -13,6 +13,7 @@
 #include "subfinder.h"
 #include "dnsenum.h"
 #include "whois.h"
+#include "ffuf.h"
 
 widget::widget(QWidget *parent)
     : QMainWindow(parent)
@@ -90,7 +91,7 @@ QPushButton* widget::createButton(int row, int col)
         button = new QPushButton("DNSenum");
     }
     else {
-        button = new QPushButton("tbd");
+        button = new QPushButton("ffuf");
     }
 
     return button;
@@ -176,6 +177,8 @@ void widget::onButtonClicked(int row, int col)
         currentScreen->show();
     }
     else if (row == 1 && col == 3) {
-        // Handle the last button
+        currentScreen = new ffuf(this);
+        setupToolScreen(currentScreen);
+        currentScreen->show();
     }
 }
