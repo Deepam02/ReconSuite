@@ -1,7 +1,7 @@
 #include "ffuf.h"
 #include "ui_ffuf.h"
 #include <QProcess>
-
+#include <QThread>
 
 ffuf::ffuf(QWidget *parent) :
     QWidget(parent),
@@ -94,6 +94,8 @@ void ffuf::startBruteForce()
 
         // Execute the modified command
         executeCommand(command);
+        QThread::msleep(100); // Sleep for a short time to avoid flooding the UI
+        QCoreApplication::processEvents(); // Process events to update the UI
     }
 
     file.close();

@@ -1,5 +1,5 @@
-#include "ui_ping.h"
 #include "ping.h"
+#include "ui_ping.h"
 #include <QRegularExpression>
 #include <QVBoxLayout>
 #include <QtConcurrent>
@@ -60,36 +60,33 @@ void ping::setLayoutAndTitle()
     outputArea->setReadOnly(true);
 }
 
-QLineEdit* ping::createLineEdit(const QString& placeholder)
+QLineEdit *ping::createLineEdit(const QString &placeholder)
 {
-    QLineEdit* lineEdit = new QLineEdit(this);
+    QLineEdit *lineEdit = new QLineEdit(this);
     lineEdit->setPlaceholderText(placeholder);
     return lineEdit;
 }
 
-QPushButton* ping::createButton(const QString& text)
+QPushButton *ping::createButton(const QString &text)
 {
     return new QPushButton(text, this);
 }
 
-QComboBox* ping::createComboBox(const QStringList& items)
+QComboBox *ping::createComboBox(const QStringList &items)
 {
-    QComboBox* comboBox = new QComboBox(this);
+    QComboBox *comboBox = new QComboBox(this);
     comboBox->addItems(items);
     return comboBox;
 }
 
-bool ping::isValidInput(const QString& input)
+bool ping::isValidInput(const QString &input)
 {
     static QRegularExpression domainPattern(R"(^(?:(?:https?|ftp):\/\/)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z]{2,})+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?:\/[^\s]*)?$)");
     return domainPattern.match(input).hasMatch();
 }
 
-
-
-void ping::updateOutput(const QString& result)
+void ping::updateOutput(const QString &result)
 {
-    outputArea->clear();
     outputArea->append(result);
 }
 
@@ -106,48 +103,29 @@ void ping::executeCommand()
     outputArea->clear();
     QString command = commandDisplay->text();
 
-    if (command.isEmpty()) {
+    if (command.isEmpty())
+    {
         outputArea->append("Command is empty.");
         return;
     }
 
     // Validate that the command contains the "ping" keyword
-    if (!command.contains("ping", Qt::CaseInsensitive)) {
+    if (!command.contains("ping", Qt::CaseInsensitive))
+    {
         outputArea->append("Invalid command. Only 'ping' command is allowed.");
         return;
     }
 
-    outputArea->clear();
-    QApplication::setOverrideCursor(Qt::WaitCursor);
     outputArea->append("Executing command: " + command);
 
     QStringList args = {"-c", command};
     QString shell = "/bin/sh";
 
-    QtConcurrent::run([=]() {
-        QProcess process;
-        QElapsedTimer timer;
-        timer.start();
+    QProcess *process = new QProcess(this);
 
-        process.start(shell, args);
-        process.waitForFinished();
-
-        int exitCode = process.exitCode();
-        QString output = process.readAllStandardOutput();
-        QString error = process.readAllStandardError();
-
-        if (exitCode != 0) {
-            QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                      Q_ARG(QString, "Command execution failed with exit code: " + QString::number(exitCode)));
-        }
-
-        if (!error.isEmpty()) {
-            QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                      Q_ARG(QString, "Error: " + error));
-        }
-
-        if (modeComboBox->currentIndex() == 1) {  // Standard mode
-            // Checking for successful or failed pings
+    connect(process, &QProcess::readyReadStandardOutput, this, [=]() {
+        QString output = process->readAllStandardOutput();
+        if (modeComboBox->currentIndex() == 1) { // Standard Mode
             if (output.contains("transmitted")) {
                 QRegularExpression regex("(\\d+) packets transmitted, (\\d+) received");
                 QRegularExpressionMatch match = regex.match(output);
@@ -157,48 +135,77 @@ void ping::executeCommand()
                     int received = match.captured(2).toInt();
 
                     if (transmitted > 0 && received > 0) {
-                        QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                                  Q_ARG(QString, "System is UP"));
-                        QApplication::restoreOverrideCursor();
+                        updateOutput("System is UP");
                         return;
                     }
                 }
-                QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                          Q_ARG(QString, "System is DOWN"));
-            } else {
-                QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                          Q_ARG(QString, "Output:\n" + output));
+                updateOutput("System is DOWN");
             }
         } else {
-            QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                      Q_ARG(QString, "Output:\n" + output));
+            updateOutput(output);
+        }
+    });
+
+    QtConcurrent::run([=]() {
+        QElapsedTimer timer;
+        timer.start();
+
+        process->start(shell, args);
+        process->waitForFinished();
+
+        int exitCode = process->exitCode();
+        QString error = process->readAllStandardError();
+
+        if (exitCode != 0)
+        {
+            updateOutput("Command execution failed with exit code: " + QString::number(exitCode));
         }
 
-        QApplication::restoreOverrideCursor();
-        QString timeOutput = "Time taken: " + QString::number(timer.elapsed()) + " ms";
-        QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection,
-                                  Q_ARG(QString, timeOutput));
+        if (!error.isEmpty())
+        {
+            updateOutput("Error: " + error);
+        }
+
+        updateOutput("Time taken: " + QString::number(timer.elapsed()) + " ms");
+
+        process->deleteLater();
     });
 }
 
 
-void ping::updateCommandOutput(const QString& result)
+void ping::standardMode()
 {
-    outputArea->append(result);
+    packetCountInput->show();
 }
 
-void ping::standardMode() { packetCountInput->show(); }
-void ping::verboseMode() { packetCountInput->show(); }
-void ping::floodingMode() { packetCountInput->hide(); }
+void ping::verboseMode()
+{
+    packetCountInput->show();
+}
+
+void ping::floodingMode()
+{
+    packetCountInput->hide();
+}
 
 void ping::onModeChanged(int index)
 {
-    switch (index) {
-    case 0: commandDisplay->setPlaceholderText("Command will be displayed here"); break;
-    case 1: standardMode(); break;
-    case 2: verboseMode(); break;
-    case 3: floodingMode(); break;
-    default: break;
+    switch (index)
+    {
+    case 0:
+        commandDisplay->setPlaceholderText("Command will be displayed here");
+        break;
+    case 1:
+        standardMode();
+        break;
+    case 2:
+        verboseMode();
+        break;
+    case 3:
+        floodingMode();
+        break;
+    default:
+        break;
     }
     updateCommandDisplay();
 }
@@ -210,16 +217,28 @@ void ping::updateCommandDisplay()
     bool ok;
     int count = packetCountStr.toInt(&ok);
 
-    if (isValidInput(domain)) {
+    if (isValidInput(domain))
+    {
         QString modeText;
-        switch (modeComboBox->currentIndex()) {
-        case 1: modeText = QString("ping %1 -c %2").arg(domain).arg(count); break;
-        case 2: modeText = QString("ping -v -D %1 -c %2").arg(domain).arg(count); break;
-        case 3: modeText = QString("ping %1 -c 100 -i 0.1").arg(domain); break;
-        default: commandDisplay->clear(); return;
+        switch (modeComboBox->currentIndex())
+        {
+        case 1:
+            modeText = QString("ping %1 -c %2").arg(domain).arg(count);
+            break;
+        case 2:
+            modeText = QString("ping -v -D %1 -c %2").arg(domain).arg(count);
+            break;
+        case 3:
+            modeText = QString("ping %1 -c 100 -i 0.1").arg(domain);
+            break;
+        default:
+            commandDisplay->clear();
+            return;
         }
         commandDisplay->setText(modeText);
-    } else {
+    }
+    else
+    {
         commandDisplay->clear();
     }
 }

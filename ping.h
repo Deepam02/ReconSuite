@@ -25,7 +25,6 @@ private slots:
     void updateOutput(const QString &result);
     void onModeChanged(int index);
     void executeCommand();
-    void updateCommandOutput(const QString &result);
     void updateCommandDisplay();
 
 private:
@@ -33,7 +32,6 @@ private:
     QLineEdit *domainInput;
     QPushButton *pingButton;
     QPushButton *clearButton;
-    QPushButton *loadCmdButton;
     QLineEdit *packetCountInput;
     QTextEdit *outputArea;
     QComboBox *modeComboBox;
