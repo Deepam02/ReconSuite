@@ -2,85 +2,224 @@
 #include "ui_traceroute.h"
 #include <QVBoxLayout>
 #include <QtConcurrent>
+#include <QRegularExpression>
 
-traceroute::traceroute(QWidget *parent)
-    : QWidget(parent),
+traceroute::traceroute(QWidget *parent) :
+    QWidget(parent),
     ui(new Ui::traceroute)
 {
     ui->setupUi(this);
-    resize(800, 650);
-
-    domainInput = new QLineEdit(this);
-    domainInput->setPlaceholderText("Enter domain");
-
-    traceButton = new QPushButton("Trace", this);
-    clearButton = new QPushButton("Clear", this);
-    outputArea = new QTextEdit(this);
-    commandOutput = new QTextEdit(this);
-    traceProcess = new QProcess(this);
-    commandComboBox = new QComboBox(this);
-    commandComboBox->addItem("Default");
-    commandComboBox->addItem("-m : Set the max number of hops");
-    commandComboBox->addItem("-f : Start from the first TTL hop");
-    commandComboBox->addItem("-F : Do not fragment packet");
-
-    optionInput = new QLineEdit(this);
-    optionInput->setPlaceholderText("Option Value");
-    optionLabel = new QLabel("Option:", this);
-
-    connect(traceButton, &QPushButton::clicked, this, &traceroute::onTraceButtonClicked);
-    connect(clearButton, &QPushButton::clicked, this, &traceroute::onClearButtonClicked);
-    connect(domainInput, &QLineEdit::returnPressed, this, &traceroute::onTraceButtonClicked);
-    connect(commandComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &traceroute::updateCommand);
-
-    connect(traceProcess, &QProcess::readyReadStandardOutput, [=]() {
-        outputArea->append(traceProcess->readAllStandardOutput());
-    });
-
-    connect(traceProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            [=](int exitCode, QProcess::ExitStatus exitStatus) {
-                outputArea->append("\nTraceroute command finished with exit code: " + QString::number(exitCode));
-                traceButton->setEnabled(true);
-            });
-
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->addWidget(domainInput);
-    layout->addWidget(commandComboBox);
-    layout->addWidget(optionLabel);
-    layout->addWidget(optionInput);
-    layout->addWidget(traceButton);
-    layout->addWidget(clearButton);
-    layout->addWidget(outputArea);
-    layout->addWidget(commandOutput);
-
-    setLayout(layout);
-
-    setWindowTitle("Traceroute Tool");
-    outputArea->setReadOnly(true);
-    commandOutput->setReadOnly(true);
-
-    // Initially, hide the option input
-    optionLabel->setVisible(false);
-    optionInput->setVisible(false);
+    setupUI();
+    setupConnections();
+    setLayoutAndTitle();
 }
 
-traceroute::~traceroute(){
+traceroute::~traceroute()
+{
     delete ui;
 }
 
-bool traceroute::isValidInput(const QString &input)
+void traceroute::setupUI()
 {
-    static QRegularExpression domainPattern(
-        R"(^(?:(?:https?|ftp):\/\/)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z]{2,})+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?:\/[^\s]*)?$)"
-        );
+    domainInput = createLineEdit("Enter domain");
+    optionInput = createLineEdit("Option Value");
+    optionLabel = new QLabel("Option:", this);
+    optionLabel->setVisible(false);
+    optionInput->setVisible(false);
+    traceButton = createButton("Trace");
+    clearButton = createButton("Clear");
+    outputArea = new QTextEdit(this);
+    modeComboBox = createComboBox({"Select Mode", "Standard Mode", "-m : Set the max number of hops", "-f : Start from the first TTL hop", "-F : Do not fragment packet"});
+    commandDisplay = createLineEdit("Command will be displayed here");
+}
 
+void traceroute::setupConnections() {
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &traceroute::onModeChanged);
+    connect(traceButton, &QPushButton::clicked, this, &traceroute::onTraceButtonClicked);
+    connect(clearButton, &QPushButton::clicked, this, &traceroute::onClearButtonClicked);
+    connect(domainInput, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &traceroute::updateCommandDisplay);
+    connect(optionInput, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
+    connect(commandDisplay, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
+    connect(optionInput, &QLineEdit::textChanged, this, &traceroute::updateCommandDisplay); // Changed here
+    connect(domainInput, &QLineEdit::textChanged, this, &traceroute::updateCommandDisplay);   // Changed here
+}
+
+
+
+void traceroute::setLayoutAndTitle()
+{
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    layout->addWidget(modeComboBox);
+    layout->addWidget(domainInput);
+    layout->addWidget(optionLabel);
+    layout->addWidget(optionInput);
+    layout->addWidget(commandDisplay);
+    layout->addWidget(traceButton);
+    layout->addWidget(clearButton);
+    layout->addWidget(outputArea);
+    layout->setContentsMargins(10, 10, 10, 10);
+
+    setLayout(layout);
+    setWindowTitle("Traceroute Tool");
+    outputArea->setReadOnly(true);
+}
+
+QLineEdit* traceroute::createLineEdit(const QString& placeholder)
+{
+    QLineEdit* lineEdit = new QLineEdit(this);
+    lineEdit->setPlaceholderText(placeholder);
+    return lineEdit;
+}
+
+QPushButton* traceroute::createButton(const QString& text)
+{
+    return new QPushButton(text, this);
+}
+
+QComboBox* traceroute::createComboBox(const QStringList& items)
+{
+    QComboBox* comboBox = new QComboBox(this);
+    comboBox->addItems(items);
+    return comboBox;
+}
+
+bool traceroute::isValidInput(const QString& input)
+{
+    static QRegularExpression domainPattern(R"(^(?:(?:https?|ftp):\/\/)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z]{2,})+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?:\/[^\s]*)?$)");
     return domainPattern.match(input).hasMatch();
 }
 
-QString traceSystem(const QString& host, const QString& option, const QString& optionValue)
+void traceroute::onClearButtonClicked()
+{
+    outputArea->clear();
+    domainInput->clear();
+    optionInput->clear();
+    commandDisplay->clear();
+}
+
+void traceroute::executeCommand()
+{
+    QString command = commandDisplay->text();
+
+    if (command.isEmpty())
+    {
+        outputArea->append("Command is empty.");
+        return;
+    }
+
+    outputArea->clear();
+    outputArea->append("Executing command: " + command);
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    QStringList args = command.split(" ");
+
+    QtConcurrent::run([=]() {
+        QProcess process;
+        QElapsedTimer timer;
+        timer.start();
+
+        process.start(args[0], args.mid(1));
+        process.waitForFinished();
+
+        int exitCode = process.exitCode();
+        QString output = process.readAllStandardOutput();
+        QString error = process.readAllStandardError();
+
+        if (exitCode != 0)
+        {
+            updateCommandOutput("Command execution failed with exit code: " + QString::number(exitCode));
+        }
+
+        if (!error.isEmpty())
+        {
+            updateCommandOutput("Error: " + error);
+        }
+        QApplication::restoreOverrideCursor();
+        updateCommandOutput("Output:\n" + output);
+
+
+        // Adding time measurement using QElapsedTimer
+        QString timeOutput = "Time taken: " + QString::number(timer.elapsed()) + " ms";
+        updateCommandOutput(timeOutput);
+    });
+}
+
+void traceroute::updateCommandOutput(const QString& result){
+    outputArea->append(result);
+}
+
+void traceroute::onModeChanged(int index)
+{
+    switch (index) {
+    case 0:
+        // Handle case 0
+        optionLabel->setVisible(false);
+        optionInput->setVisible(false);
+        break;
+    case 1:
+        // Handle case 1
+        optionLabel->setText("-m : Set the max number of hops");
+        optionLabel->setVisible(true);
+        optionInput->setVisible(true);
+        break;
+    case 2:
+        // Handle case 2
+        optionLabel->setText("-f : Start from the first TTL hop");
+        optionLabel->setVisible(true);
+        optionInput->setVisible(true);
+        break;
+    case 3:
+        // Handle case 3
+        optionLabel->setText("-F : Do not fragment packet");
+        optionLabel->setVisible(true);
+        optionInput->setVisible(true);
+        break;
+    default:
+        break;
+    }
+    updateCommandDisplay(); // Update the command display based on the mode change
+}
+
+void traceroute::updateCommandDisplay()
+{
+    QString domain = domainInput->text();
+    QString option = modeComboBox->currentText();
+    QString optionValue = optionInput->text();
+    QString command = "traceroute ";
+
+    if (option == "Standard Mode") {
+        command += domain;
+        optionLabel->setVisible(false);
+        optionInput->setVisible(false);
+    } else if (option == "-m") {
+        command += "-m ";
+        optionLabel->setText("Max Hops:");
+        optionLabel->setVisible(true);
+        optionInput->setVisible(true);
+    } else if (option == "-f") {
+        command += "-f ";
+        optionLabel->setText("Start TTL:");
+        optionLabel->setVisible(true);
+        optionInput->setVisible(true);
+    } else if (option == "-F") {
+        command += "-F ";
+        optionLabel->setVisible(false);
+        optionInput->setVisible(false);
+    }
+
+    if (!optionValue.isEmpty()) {
+        command += optionValue + " ";
+    }
+    // command += domain;
+
+    commandDisplay->setText(command);
+}
+
+QString traceroute::traceSystem(const QString& host, const QString& option, const QString& optionValue)
 {
     QStringList arguments;
-    if (option == "Default") {
+    if (option == "Default" || option == "-F") {
         arguments << host;
     } else if (option == "-m" || option == "-f") {
         if (!optionValue.isEmpty()) {
@@ -88,9 +227,6 @@ QString traceSystem(const QString& host, const QString& option, const QString& o
         } else {
             arguments << option << host;
         }
-    }
-    else {
-        arguments << option << host;
     }
 
     QProcess traceProcess;
@@ -106,7 +242,7 @@ void traceroute::onTraceButtonClicked()
     outputArea->append("Tracing... Please wait.");
 
     QString domain = domainInput->text();
-    QString option = commandComboBox->currentText();
+    QString option = modeComboBox->currentText();
     QString optionValue = optionInput->text();
 
     if ((option == "-m" || option == "-f") && optionValue.isEmpty()) {
@@ -131,51 +267,13 @@ void traceroute::onTraceButtonClicked()
     }
 }
 
-void traceroute::updateOutput(const QString& result)
-{
+
+void traceroute::updateOutput(const QString& result){
     // Remove the "Tracing..." message
     outputArea->clear();
 
     // Append the actual trace result
     outputArea->append(result);
 
-    // Update command output
-    QString command = "traceroute ";
-    QString option = commandComboBox->currentText();
-    QString optionValue = optionInput->text();
-    if (option == "-m" || option == "-f" || option == "-F") {
-        if (!optionValue.isEmpty()) {
-            command += option + " " + optionValue + " " + domainInput->text();
-        }
-        else {
-            command += option + " " + domainInput->text();
-        }
-    } else {
-        command += domainInput->text();
-    }
-    commandOutput->setText(command);
-}
-
-void traceroute::onClearButtonClicked()
-{
-    outputArea->clear();
-    domainInput->clear();
-    optionInput->clear();
-    commandOutput->clear();
-    commandComboBox->setCurrentIndex(0);
-}
-
-void traceroute::updateCommand(){
-    QString option = commandComboBox->currentText();
-    if (option == "Default" || option == "-F") {
-        optionInput->clear();
-        optionLabel->setVisible(false);
-        optionInput->setVisible(false);
-    }
-    else {
-        optionLabel->setVisible(true);
-        optionInput->setVisible(true);
-    }
-
-    updateOutput(""); // Update command output when the option changes
+    QString command = commandDisplay->text();
 }

@@ -16,6 +16,7 @@ Subfinder::Subfinder(QWidget *parent)
     findButton = new QPushButton("Find Subdomains", this);
     clearButton = new QPushButton("Clear", this);
     outputArea = new QTextEdit(this);
+    commandDisplay = new QLineEdit("Command will be displayed here");
     subfinderProcess = new QProcess(this);
 
     connect(findButton, &QPushButton::clicked, this, &Subfinder::onFindButtonClicked);
@@ -37,6 +38,7 @@ Subfinder::Subfinder(QWidget *parent)
     layout->addWidget(domainInput);
     layout->addWidget(findButton);
     layout->addWidget(clearButton);
+    layout->addWidget(commandDisplay);
     layout->addWidget(outputArea);
 
     setLayout(layout);

@@ -31,6 +31,7 @@ private:
     QPushButton *clearButton;
     QTextEdit *outputArea;
     QProcess *subfinderProcess;
+    QLineEdit *commandDisplay;
 
     bool isValidInput(const QString &input);
 };

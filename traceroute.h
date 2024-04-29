@@ -1,5 +1,3 @@
-// traceroute.h
-
 #ifndef TRACEROUTE_H
 #define TRACEROUTE_H
 
@@ -15,33 +13,44 @@ namespace Ui {
 class traceroute;
 }
 
-class traceroute : public QWidget
-{
+class traceroute : public QWidget{
     Q_OBJECT
 
 public:
     explicit traceroute(QWidget *parent = nullptr);
     ~traceroute();
+    void updateCommandOutput(const QString& result);
+
+public slots:
+    void onModeChanged(int index);
+
 
 private slots:
     void onTraceButtonClicked();
     void onClearButtonClicked();
+    void executeCommand();
     void updateOutput(const QString &result);
-    void updateCommand();
+    void updateCommandDisplay();
 
 private:
     Ui::traceroute *ui;
     QLineEdit *domainInput;
+    QLineEdit *optionInput;
+    QLabel *optionLabel;
     QPushButton *traceButton;
     QPushButton *clearButton;
     QTextEdit *outputArea;
-    QTextEdit *commandOutput;
-    QProcess *traceProcess;
-    QComboBox *commandComboBox;
-    QLineEdit *optionInput;
-    QLabel *optionLabel;
+    QComboBox *modeComboBox;
+    QLineEdit *commandDisplay;
 
     bool isValidInput(const QString &input);
+    QString traceSystem(const QString& host, const QString& option, const QString& optionValue);
+    QLineEdit* createLineEdit(const QString& placeholder);
+    QPushButton* createButton(const QString& text);
+    QComboBox* createComboBox(const QStringList& items);
+    void setupUI();
+    void setupConnections();
+    void setLayoutAndTitle();
 };
 
 #endif // TRACEROUTE_H
