@@ -35,7 +35,7 @@ void traceroute::setupUI()
 
 void traceroute::setupConnections() {
     connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &traceroute::onModeChanged);
-    connect(traceButton, &QPushButton::clicked, this, &traceroute::onTraceButtonClicked);
+    connect(traceButton, &QPushButton::clicked, this, &traceroute::executeCommand);
     connect(clearButton, &QPushButton::clicked, this, &traceroute::onClearButtonClicked);
     connect(domainInput, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
     connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &traceroute::updateCommandDisplay);
@@ -192,80 +192,38 @@ void traceroute::updateCommandDisplay()
         command += domain;
         optionLabel->setVisible(false);
         optionInput->setVisible(false);
-    } else if (option == "-m") {
+    } else if (option == "-m : Set the max number of hops") {
         command += "-m ";
+        if (!optionValue.isEmpty()) {
+            command += optionValue + " ";
+        }
+        command += domain;
         optionLabel->setText("Max Hops:");
         optionLabel->setVisible(true);
         optionInput->setVisible(true);
-    } else if (option == "-f") {
+    } else if (option == "-f : Start from the first TTL hop") {
         command += "-f ";
+        if (!optionValue.isEmpty()) {
+            command += optionValue + " ";
+        }
+        command += domain;
         optionLabel->setText("Start TTL:");
         optionLabel->setVisible(true);
         optionInput->setVisible(true);
-    } else if (option == "-F") {
+    } else if (option == "-F : Do not fragment packet") {
         command += "-F ";
+        command += domain;
         optionLabel->setVisible(false);
         optionInput->setVisible(false);
     }
 
-    if (!optionValue.isEmpty()) {
-        command += optionValue + " ";
-    }
-    // command += domain;
 
     commandDisplay->setText(command);
 }
 
-QString traceroute::traceSystem(const QString& host, const QString& option, const QString& optionValue)
-{
-    QStringList arguments;
-    if (option == "Default" || option == "-F") {
-        arguments << host;
-    } else if (option == "-m" || option == "-f") {
-        if (!optionValue.isEmpty()) {
-            arguments << option << optionValue << host;
-        } else {
-            arguments << option << host;
-        }
-    }
 
-    QProcess traceProcess;
-    traceProcess.start("traceroute", arguments);
-    traceProcess.waitForFinished();
 
-    return traceProcess.readAllStandardOutput();
-}
 
-void traceroute::onTraceButtonClicked()
-{
-    outputArea->clear();
-    outputArea->append("Tracing... Please wait.");
-
-    QString domain = domainInput->text();
-    QString option = modeComboBox->currentText();
-    QString optionValue = optionInput->text();
-
-    if ((option == "-m" || option == "-f") && optionValue.isEmpty()) {
-        outputArea->append("Please provide a value for the option.");
-        return;
-    }
-
-    if (isValidInput(domain))
-    {
-        // Start trace process asynchronously
-        QFuture<void> future = QtConcurrent::run([=]() {
-            QString result = traceSystem(domain, option, optionValue);
-
-            // Update GUI in the main thread
-            QMetaObject::invokeMethod(this, "updateOutput", Qt::QueuedConnection,
-                                      Q_ARG(QString, result));
-        });
-    }
-    else
-    {
-        outputArea->append("Enter a valid Domain or IP Address");
-    }
-}
 
 
 void traceroute::updateOutput(const QString& result){

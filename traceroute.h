@@ -26,7 +26,6 @@ public slots:
 
 
 private slots:
-    void onTraceButtonClicked();
     void onClearButtonClicked();
     void executeCommand();
     void updateOutput(const QString &result);
