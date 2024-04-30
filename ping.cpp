@@ -28,6 +28,7 @@ void ping::setupUI()
     outputArea = new QTextEdit(this);
     modeComboBox = createComboBox({"Select Mode", "Standard Mode", "Verbose Output", "Flooding"});
     commandDisplay = createLineEdit("Command will be displayed here");
+    stopButton = createButton("Stop");
 }
 
 void ping::setupConnections()
@@ -41,6 +42,8 @@ void ping::setupConnections()
     connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ping::updateCommandDisplay);
     connect(domainInput, &QLineEdit::textChanged, this, &ping::updateCommandDisplay);
     connect(packetCountInput, &QLineEdit::textChanged, this, &ping::updateCommandDisplay);
+    connect(stopButton, &QPushButton::clicked, this, &ping::stopExecution);
+
 }
 
 void ping::setLayoutAndTitle()
@@ -52,6 +55,7 @@ void ping::setLayoutAndTitle()
     layout->addWidget(commandDisplay);
     layout->addWidget(pingButton);
     layout->addWidget(clearButton);
+    layout->addWidget(stopButton);
     layout->addWidget(outputArea);
     layout->setContentsMargins(10, 10, 10, 10);
 
@@ -116,12 +120,33 @@ void ping::executeCommand()
         return;
     }
 
+    outputArea->clear(); // Clear any previous content
+
+    if (modeComboBox->currentIndex() == 3)
+    {
+        // Display disclaimer in big red text
+        outputArea->setText("<font color='red' size='6'>Disclaimer: Flooding PING request may result in IP ban. Press stop button after some time to avoid this.</font>");
+
+        // Wait for a few seconds before starting code execution
+        QTimer::singleShot(5000, this, [=]() {
+            startExecution(command);
+        });
+    }
+    else
+    {
+        // Start execution immediately
+        startExecution(command);
+    }
+}
+
+void ping::startExecution(const QString& command)
+{
     outputArea->append("Executing command: " + command);
 
     QStringList args = {"-c", command};
     QString shell = "/bin/sh";
 
-    QProcess *process = new QProcess(this);
+    process = new QProcess(this);
 
     connect(process, &QProcess::readyReadStandardOutput, this, [=]() {
         QString output = process->readAllStandardOutput();
@@ -146,31 +171,40 @@ void ping::executeCommand()
         }
     });
 
-    QtConcurrent::run([=]() {
-        QElapsedTimer timer;
-        timer.start();
+    // Connect the stop button to stopExecution slot
+    connect(stopButton, &QPushButton::clicked, this, &ping::stopExecution);
 
-        process->start(shell, args);
-        process->waitForFinished();
+    // Start the process
+    process->start(shell, args);
+    process->waitForStarted();
 
-        int exitCode = process->exitCode();
-        QString error = process->readAllStandardError();
+    // Use a timer to periodically check for process termination
+    QTimer* timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, [=]() {
+        if (process->state() == QProcess::NotRunning) {
+            timer->stop();
+            int exitCode = process->exitCode();
+            QString error = process->readAllStandardError();
 
-        if (exitCode != 0)
-        {
-            updateOutput("Command execution failed with exit code: " + QString::number(exitCode));
+            if (exitCode != 0)
+            {
+                updateOutput("Command execution failed with exit code: " + QString::number(exitCode));
+            }
+
+            if (!error.isEmpty())
+            {
+                updateOutput("Error: " + error);
+            }
+
+            updateOutput("Command execution finished.");
+
+            process->deleteLater();
         }
-
-        if (!error.isEmpty())
-        {
-            updateOutput("Error: " + error);
-        }
-
-        updateOutput("Time taken: " + QString::number(timer.elapsed()) + " ms");
-
-        process->deleteLater();
     });
+
+    timer->start(100); // Check every 100 milliseconds
 }
+
 
 
 void ping::standardMode()
@@ -229,7 +263,7 @@ void ping::updateCommandDisplay()
             modeText = QString("ping -v -D %1 -c %2").arg(domain).arg(count);
             break;
         case 3:
-            modeText = QString("ping %1 -c 100 -i 0.1").arg(domain);
+            modeText = QString("ping %1 -i 0.002").arg(domain);
             break;
         default:
             commandDisplay->clear();
@@ -240,5 +274,14 @@ void ping::updateCommandDisplay()
     else
     {
         commandDisplay->clear();
+    }
+}
+
+
+void ping::stopExecution()
+{
+    if (process && process->state() != QProcess::NotRunning) {
+        process->terminate();
+        outputArea->append("Command execution stopped.");
     }
 }

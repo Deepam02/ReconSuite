@@ -6,25 +6,116 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>1032</width>
+    <height>523</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>widget</string>
   </property>
-  <widget class="QWidget" name="centralWidget"/>
+  <widget class="QWidget" name="centralWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="maximumSize">
+    <size>
+     <width>800</width>
+     <height>554</height>
+    </size>
+   </property>
+  </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>1032</width>
      <height>23</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionNew"/>
+    <addaction name="actionOpen"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionPing"/>
+    <addaction name="actionNmap"/>
+    <addaction name="actionTraceroute"/>
+    <addaction name="actionWhois"/>
+    <addaction name="actionDig"/>
+    <addaction name="actionSubfinder"/>
+    <addaction name="actionDnsenum"/>
+    <addaction name="actionFfuf"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuTools"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionNew">
+   <property name="text">
+    <string>New</string>
+   </property>
+  </action>
+  <action name="actionOpen">
+   <property name="text">
+    <string>Open</string>
+   </property>
+  </action>
+  <action name="actionPing">
+   <property name="text">
+    <string>Ping</string>
+   </property>
+  </action>
+  <action name="actionNmap">
+   <property name="text">
+    <string>Nmap</string>
+   </property>
+  </action>
+  <action name="actionTraceroute">
+   <property name="text">
+    <string>Traceroute</string>
+   </property>
+  </action>
+  <action name="actionWhois">
+   <property name="text">
+    <string>Whois</string>
+   </property>
+  </action>
+  <action name="actionDig">
+   <property name="text">
+    <string>Dig</string>
+   </property>
+  </action>
+  <action name="actionSubfinder">
+   <property name="text">
+    <string>Subfinder</string>
+   </property>
+  </action>
+  <action name="actionDnsenum">
+   <property name="text">
+    <string>Dnsenum</string>
+   </property>
+  </action>
+  <action name="actionFfuf">
+   <property name="text">
+    <string>Ffuf</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

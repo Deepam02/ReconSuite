@@ -25,13 +25,19 @@ private slots:
     void updateOutput(const QString &result);
     void onModeChanged(int index);
     void executeCommand();
+    void startExecution(const QString& command);
     void updateCommandDisplay();
+    void stopExecution();
+
+
 
 private:
     Ui::ping *ui;
     QLineEdit *domainInput;
     QPushButton *pingButton;
     QPushButton *clearButton;
+    QPushButton *stopButton;
+    QProcess *process;
     QLineEdit *packetCountInput;
     QTextEdit *outputArea;
     QComboBox *modeComboBox;
