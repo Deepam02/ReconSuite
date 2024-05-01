@@ -1,12 +1,12 @@
 #include "traceroute.h"
 #include "ui_traceroute.h"
+#include <QRegularExpression>
 #include <QVBoxLayout>
 #include <QtConcurrent>
-#include <QRegularExpression>
 
-traceroute::traceroute(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::traceroute)
+traceroute::traceroute(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::traceroute)
 {
     ui->setupUi(this);
     setupUI();
@@ -29,23 +29,44 @@ void traceroute::setupUI()
     traceButton = createButton("Trace");
     clearButton = createButton("Clear");
     outputArea = new QTextEdit(this);
-    modeComboBox = createComboBox({"Select Mode", "Standard Mode", "-m : Set the max number of hops", "-f : Start from the first TTL hop", "-F : Do not fragment packet"});
+    modeComboBox = createComboBox({"Select Mode",
+                                   "Standard Mode",
+                                   "-m : Set the max number of hops",
+                                   "-f : Start from the first TTL hop",
+                                   "-F : Do not fragment packet"});
     commandDisplay = createLineEdit("Command will be displayed here");
+    tcpCheckbox = new QCheckBox("Use TCP SYN for tracerouting", this);
+    portInput = createLineEdit("Port Number");
+    portInput->setValidator(new QIntValidator(1, 65535, this)); // Port range validator
 }
 
-void traceroute::setupConnections() {
-    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &traceroute::onModeChanged);
+void traceroute::setupConnections()
+{
+    connect(modeComboBox,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &traceroute::onModeChanged);
     connect(traceButton, &QPushButton::clicked, this, &traceroute::executeCommand);
     connect(clearButton, &QPushButton::clicked, this, &traceroute::onClearButtonClicked);
     connect(domainInput, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
-    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &traceroute::updateCommandDisplay);
+    connect(modeComboBox,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &traceroute::updateCommandDisplay);
     connect(optionInput, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
+    connect(portInput, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
     connect(commandDisplay, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
-    connect(optionInput, &QLineEdit::textChanged, this, &traceroute::updateCommandDisplay); // Changed here
-    connect(domainInput, &QLineEdit::textChanged, this, &traceroute::updateCommandDisplay);   // Changed here
+    connect(optionInput,
+            &QLineEdit::textChanged,
+            this,
+            &traceroute::updateCommandDisplay);
+    connect(domainInput,
+            &QLineEdit::textChanged,
+            this,
+            &traceroute::updateCommandDisplay);
+    connect(tcpCheckbox, &QCheckBox::stateChanged, this, &traceroute::updateCommandDisplay);
+    connect(portInput, &QLineEdit::textChanged, this, &traceroute::updateCommandDisplay);
 }
-
-
 
 void traceroute::setLayoutAndTitle()
 {
@@ -55,6 +76,8 @@ void traceroute::setLayoutAndTitle()
     layout->addWidget(optionLabel);
     layout->addWidget(optionInput);
     layout->addWidget(commandDisplay);
+    layout->addWidget(tcpCheckbox);
+    layout->addWidget(portInput);
     layout->addWidget(traceButton);
     layout->addWidget(clearButton);
     layout->addWidget(outputArea);
@@ -65,28 +88,29 @@ void traceroute::setLayoutAndTitle()
     outputArea->setReadOnly(true);
 }
 
-QLineEdit* traceroute::createLineEdit(const QString& placeholder)
+QLineEdit *traceroute::createLineEdit(const QString &placeholder)
 {
-    QLineEdit* lineEdit = new QLineEdit(this);
+    QLineEdit *lineEdit = new QLineEdit(this);
     lineEdit->setPlaceholderText(placeholder);
     return lineEdit;
 }
 
-QPushButton* traceroute::createButton(const QString& text)
+QPushButton *traceroute::createButton(const QString &text)
 {
     return new QPushButton(text, this);
 }
 
-QComboBox* traceroute::createComboBox(const QStringList& items)
+QComboBox *traceroute::createComboBox(const QStringList &items)
 {
-    QComboBox* comboBox = new QComboBox(this);
+    QComboBox *comboBox = new QComboBox(this);
     comboBox->addItems(items);
     return comboBox;
 }
 
-bool traceroute::isValidInput(const QString& input)
+bool traceroute::isValidInput(const QString &input)
 {
-    static QRegularExpression domainPattern(R"(^(?:(?:https?|ftp):\/\/)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z]{2,})+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?:\/[^\s]*)?$)");
+    static QRegularExpression domainPattern(
+        R"(^(?:(?:https?|ftp):\/\/)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z]{2,})+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?:\/[^\s]*)?$)");
     return domainPattern.match(input).hasMatch();
 }
 
@@ -96,14 +120,14 @@ void traceroute::onClearButtonClicked()
     domainInput->clear();
     optionInput->clear();
     commandDisplay->clear();
+    portInput->clear();
 }
 
 void traceroute::executeCommand()
 {
     QString command = commandDisplay->text();
 
-    if (command.isEmpty())
-    {
+    if (command.isEmpty()) {
         outputArea->append("Command is empty.");
         return;
     }
@@ -126,18 +150,16 @@ void traceroute::executeCommand()
         QString output = process.readAllStandardOutput();
         QString error = process.readAllStandardError();
 
-        if (exitCode != 0)
-        {
-            updateCommandOutput("Command execution failed with exit code: " + QString::number(exitCode));
+        if (exitCode != 0) {
+            updateCommandOutput("Command execution failed with exit code: "
+                                + QString::number(exitCode));
         }
 
-        if (!error.isEmpty())
-        {
+        if (!error.isEmpty()) {
             updateCommandOutput("Error: " + error);
         }
         QApplication::restoreOverrideCursor();
         updateCommandOutput("Output:\n" + output);
-
 
         // Adding time measurement using QElapsedTimer
         QString timeOutput = "Time taken: " + QString::number(timer.elapsed()) + " ms";
@@ -145,7 +167,8 @@ void traceroute::executeCommand()
     });
 }
 
-void traceroute::updateCommandOutput(const QString& result){
+void traceroute::updateCommandOutput(const QString &result)
+{
     outputArea->append(result);
 }
 
@@ -153,24 +176,20 @@ void traceroute::onModeChanged(int index)
 {
     switch (index) {
     case 0:
-        // Handle case 0
         optionLabel->setVisible(false);
         optionInput->setVisible(false);
         break;
     case 1:
-        // Handle case 1
         optionLabel->setText("-m : Set the max number of hops");
         optionLabel->setVisible(true);
         optionInput->setVisible(true);
         break;
     case 2:
-        // Handle case 2
         optionLabel->setText("-f : Start from the first TTL hop");
         optionLabel->setVisible(true);
         optionInput->setVisible(true);
         break;
     case 3:
-        // Handle case 3
         optionLabel->setText("-F : Do not fragment packet");
         optionLabel->setVisible(true);
         optionInput->setVisible(true);
@@ -187,6 +206,16 @@ void traceroute::updateCommandDisplay()
     QString option = modeComboBox->currentText();
     QString optionValue = optionInput->text();
     QString command = "traceroute ";
+
+    if (tcpCheckbox->isChecked()) {
+        command += "-T ";
+        QString portNumber = portInput->text();
+        if (!portNumber.isEmpty()) {
+            command += "-p " + portNumber + " ";
+        } else {
+            command += "-p 80 "; // Default port is 80
+        }
+    }
 
     if (option == "Standard Mode") {
         command += domain;
@@ -217,21 +246,5 @@ void traceroute::updateCommandDisplay()
         optionInput->setVisible(false);
     }
 
-
     commandDisplay->setText(command);
-}
-
-
-
-
-
-
-void traceroute::updateOutput(const QString& result){
-    // Remove the "Tracing..." message
-    outputArea->clear();
-
-    // Append the actual trace result
-    outputArea->append(result);
-
-    QString command = commandDisplay->text();
 }
