@@ -33,14 +33,43 @@ widget::widget(QWidget *parent)
     setWindowIcon(icon);
     setWindowTitle("ReconSuite");
 
-    // Add label to the tab widget
-    QLabel *label = new QLabel("ReconSuite", tabWidget);
-    label->setAlignment(Qt::AlignCenter);
-    tabWidget->addTab(label, "home");
+    // Add content to the home tab
+    QWidget *homeWidget = new QWidget(this);
+    QVBoxLayout *homeLayout = new QVBoxLayout(homeWidget);
+
+    QLabel *titleLabel = new QLabel("Welcome to ReconSuite", homeWidget);
+    titleLabel->setAlignment(Qt::AlignCenter);
+    titleLabel->setFont(QFont("Arial", 16, QFont::Bold));
+    homeLayout->addWidget(titleLabel);
+
+    QLabel *descriptionLabel = new QLabel("ReconSuite is a comprehensive GUI application built using Qt C++ that integrates a suite of reconnaissance tools for network analysis and information gathering. This project aims to provide a user-friendly interface for common reconnaissance tasks, streamlining the process for both beginners and experienced users.", homeWidget);
+    descriptionLabel->setWordWrap(true);
+    homeLayout->addWidget(descriptionLabel);
+
+    QLabel *featuresLabel = new QLabel("Features:", homeWidget);
+    featuresLabel->setFont(QFont("Arial", 14, QFont::Bold));
+    homeLayout->addWidget(featuresLabel);
+
+    // Add features list
+    QListWidget *featuresList = new QListWidget(homeWidget);
+    QStringList features;
+    features << "Ping: Check the reachability of a host on an IP network."
+             << "Nmap: Perform network discovery and security auditing."
+             << "Dig: Query DNS servers for information about host addresses, mail exchanges, and other data."
+             << "Traceroute: Trace the route taken by packets across an IP network."
+             << "Whois: Retrieve registration information for domain names."
+             << "Dnsenum: Perform DNS enumeration to gather information about DNS nameservers and zones."
+             << "Subfinder: Discover subdomains belonging to a domain."
+             << "Ffuf: A fast web fuzzer used for directory and parameter brute-forcing.";
+    featuresList->addItems(features);
+    homeLayout->addWidget(featuresList);
+
+    tabWidget->addTab(homeWidget, "Home");
 
     // Set initial window size
     resize(800, 800);
 }
+
 
 
 widget::~widget()

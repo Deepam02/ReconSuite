@@ -1,9 +1,9 @@
-// widget.h
 #ifndef WIDGET_H
 #define WIDGET_H
 
 #include <QMainWindow>
 #include <QTabWidget>
+#include <QListWidget> // Include QListWidget header
 #include "ui_widget.h"
 #include <QSplitter>
 
@@ -33,7 +33,6 @@ private:
     Ui::widget *ui;
     QTabWidget *tabWidget;
     QSplitter *splitter;
-
 
     void addToolTab(QWidget *toolWidget, const QString &label);
 };
