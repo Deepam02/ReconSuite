@@ -1,23 +1,23 @@
 #include "ffuf.h"
-#include "ui_ffuf.h"
 #include <QProcess>
 #include <QThread>
-
-ffuf::ffuf(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::ffuf)
-{
+#include "ui_ffuf.h"
+#include <QRegularExpression>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QRandomGenerator>
+ffuf::ffuf(QWidget *parent)
+    : QWidget(parent), ui(new Ui::ffuf) {
     ui->setupUi(this);
     setupUiElements();
 }
 
-ffuf::~ffuf()
-{
+ffuf::~ffuf() {
     delete ui;
 }
 
-void ffuf::setupUiElements()
-{
+void ffuf::setupUiElements() {
     urlInput = new QLineEdit(this);
     urlInput->setPlaceholderText("Enter URL");
 
@@ -27,11 +27,17 @@ void ffuf::setupUiElements()
     browseButton = new QPushButton("Browse", this);
     connect(browseButton, &QPushButton::clicked, this, &ffuf::browseWordlist);
 
+    generateSubdomainButton = new QPushButton("Generate Subdomain Command", this);
+    connect(generateSubdomainButton, &QPushButton::clicked, this, &ffuf::generateSubdomainCommand);
+
+    generateDirectoryButton = new QPushButton("Generate Directory Command", this);
+    connect(generateDirectoryButton, &QPushButton::clicked, this, &ffuf::generateDirectoryCommand);
+
     commandOutput = new QTextEdit(this);
     commandOutput->setReadOnly(true);
 
-    generateButton = new QPushButton("Generate Command", this);
-    connect(generateButton, &QPushButton::clicked, this, &ffuf::generateCommand);
+    generatedCommandText = new QTextEdit(this);
+    generatedCommandText->setReadOnly(true);
 
     startButton = new QPushButton("Start Brute Force", this);
     connect(startButton, &QPushButton::clicked, this, &ffuf::startBruteForce);
@@ -41,17 +47,22 @@ void ffuf::setupUiElements()
     layout->addWidget(urlInput);
     layout->addWidget(wordlistInput);
     layout->addWidget(browseButton);
-    layout->addWidget(generateButton);
+    layout->addWidget(generateSubdomainButton);
+    layout->addWidget(generateDirectoryButton);
     layout->addWidget(startButton);
     layout->addWidget(new QLabel("Generated Command:", this));
+    layout->addWidget(generatedCommandText);  // Added for displaying the generated command
+    layout->addWidget(new QLabel("Command Output:", this));
     layout->addWidget(commandOutput);
 
     setLayout(layout);
 }
 
-void ffuf::browseWordlist()
-{
-    QString fileName = QFileDialog::getOpenFileName(this, tr("Open Wordlist File"), QDir::homePath(), tr("Text Files (*.txt)"));
+void ffuf::browseWordlist() {
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                                    tr("Open Wordlist File"),
+                                                    QDir::homePath(),
+                                                    tr("Text Files (*.txt)"));
 
     if (!fileName.isEmpty()) {
         wordlistInput->setText(fileName);
@@ -59,8 +70,31 @@ void ffuf::browseWordlist()
     }
 }
 
-void ffuf::generateCommand()
-{
+void ffuf::generateSubdomainCommand() {
+    QString url = urlInput->text();
+    QString wordlist = wordlistInput->text();
+
+    if (url.isEmpty() || wordlist.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Please enter URL and select Wordlist Location.");
+        return;
+    }
+
+    QRegularExpression regex("[A-Za-z0-9-]+\.com");  // Regular expression to extract the subdomain
+    QRegularExpressionMatch match = regex.match(url);
+    if (!match.hasMatch()) {
+        QMessageBox::warning(this, "Error", "Invalid URL format. Please enter a valid URL.");
+        return;
+    }
+
+    QString subdomain = match.captured(1);
+    generatedCommand = QString("ffuf -u \"%1.FUZZ.%2\" -w \"%3\"").arg("https://").arg(subdomain).arg(wordlist);
+    generatedCommandText->setPlainText(generatedCommand);  // Display the generated command
+}
+
+
+
+
+void ffuf::generateDirectoryCommand() {
     QString url = urlInput->text();
     QString wordlist = wordlistInput->text();
 
@@ -70,11 +104,10 @@ void ffuf::generateCommand()
     }
 
     generatedCommand = QString("ffuf -u \"%1/FUZZ\" -w \"%2\"").arg(url).arg(wordlist);
-    commandOutput->setPlainText(generatedCommand);
+    generatedCommandText->setPlainText(generatedCommand);  // Display the generated command
 }
 
-void ffuf::startBruteForce()
-{
+void ffuf::startBruteForce() {
     if (generatedCommand.isEmpty()) {
         QMessageBox::warning(this, "Error", "Please generate the command first.");
         return;
@@ -101,8 +134,7 @@ void ffuf::startBruteForce()
     file.close();
 }
 
-void ffuf::executeCommand(const QString &command)
-{
+void ffuf::executeCommand(const QString &command) {
     QProcess process;
     process.start(command);
     process.waitForFinished();
@@ -111,7 +143,28 @@ void ffuf::executeCommand(const QString &command)
     QTextStream stream(output);
     QString result = stream.readAll();
 
-    // Display the result for each attempt
-    commandOutput->append("Command: " + command);
-    commandOutput->append("Result:\n" + result + "\n");
+    // Extract the part of the URL where brute force is happening
+    QString urlPart;
+    QRegularExpression regex("-u \"(.*?)\"");
+    QRegularExpressionMatch match = regex.match(command);
+    if (match.hasMatch()) {
+        urlPart = match.captured(1);
+    }
+
+    // Perform an HTTP request to check if the URL is active
+    QNetworkAccessManager manager;
+    QNetworkRequest request((QUrl(urlPart)));
+    QNetworkReply *reply = manager.get(request);
+    QEventLoop loop;
+    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    // Check the response status code
+    int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+    // Display the result for each attempt with the URL part and status
+    commandOutput->append("URL Part: " + urlPart);
+    commandOutput->append("Result: " + QString(statusCode == 200 ? "Active" : "Non-Active") + "\n");
+
+    reply->deleteLater();
 }

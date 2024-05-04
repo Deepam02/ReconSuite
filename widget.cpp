@@ -4,17 +4,14 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QGridLayout>
-#include <QSplitter>
 #include "ping.h"
 #include "nmap.h"
 #include "dig.h"
 #include "traceroute.h"
-#include "nslookup.h"
 #include "subfinder.h"
 #include "dnsenum.h"
 #include "whois.h"
 #include "ffuf.h"
-
 
 widget::widget(QWidget *parent)
     : QMainWindow(parent)
@@ -22,97 +19,85 @@ widget::widget(QWidget *parent)
 {
     ui->setupUi(this);
 
-    QVBoxLayout *mainLayout = new QVBoxLayout(ui->centralWidget);
+    // Create the tab widget
+    tabWidget = new QTabWidget(this);
+
+    // Set the size policy for the tab widget
+    tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    // Set the tab widget as the central widget
+    setCentralWidget(tabWidget);
+
+    // Set window properties
     QIcon icon(":/img/reconsuitelogo.jpg");
     setWindowIcon(icon);
-
-    QLabel *label = new QLabel("ReconSuite");
-    label->setAlignment(Qt::AlignCenter);
-    mainLayout->addWidget(label, 0, Qt::AlignTop | Qt::AlignHCenter);
-
-    ui->centralWidget->setLayout(mainLayout);
-
     setWindowTitle("ReconSuite");
+
+    // Add label to the tab widget
+    QLabel *label = new QLabel("ReconSuite", tabWidget);
+    label->setAlignment(Qt::AlignCenter);
+    tabWidget->addTab(label, "home");
+
+    // Set initial window size
     resize(800, 800);
 }
+
 
 widget::~widget()
 {
     delete ui;
 }
 
-void widget::setupToolScreen(QWidget *toolScreen)
-{
-    QSplitter *splitter = new QSplitter(Qt::Vertical, this);
-
-    // Add the tool widget to the top section of the splitter
-    splitter->addWidget(toolScreen);
-
-
-
-
-    // Set the size policy for the splitter
-    splitter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-    setCentralWidget(splitter);
-}
-
-
-
-
-
 void widget::on_actionPing_triggered()
 {
-    currentScreen = new ping(this);
-    setupToolScreen(currentScreen);
-    currentScreen->show();
+    ping *pingWidget = new ping(this);
+    addToolTab(pingWidget, "Ping");
 }
 
 void widget::on_actionNmap_triggered()
 {
-    currentScreen = new Nmap(this);
-    setupToolScreen(currentScreen);
-    currentScreen->show();
+    Nmap *nmapWidget = new Nmap(this);
+    addToolTab(nmapWidget, "Nmap");
 }
 
 void widget::on_actionTraceroute_triggered()
 {
-    currentScreen = new traceroute(this);
-    setupToolScreen(currentScreen);
-    currentScreen->show();
+    traceroute *tracerouteWidget = new traceroute(this);
+    addToolTab(tracerouteWidget, "Traceroute");
 }
 
 void widget::on_actionSubfinder_triggered()
 {
-    currentScreen = new Subfinder(this);
-    setupToolScreen(currentScreen);
-    currentScreen->show();
+    Subfinder *subfinderWidget = new Subfinder(this);
+    addToolTab(subfinderWidget, "Subfinder");
 }
 
 void widget::on_actionDig_triggered()
 {
-    currentScreen = new DigTool(this);
-    setupToolScreen(currentScreen);
-    currentScreen->show();
+    dig *digWidget = new dig(this);
+    addToolTab(digWidget, "Dig");
 }
 
 void widget::on_actionWhois_triggered()
 {
-    currentScreen = new whois(this);
-    setupToolScreen(currentScreen);
-    currentScreen->show();
+    whois *whoisWidget = new whois(this);
+    addToolTab(whoisWidget, "Whois");
 }
 
 void widget::on_actionDnsenum_triggered()
 {
-    currentScreen = new Dnsenum(this);
-    setupToolScreen(currentScreen);
-    currentScreen->show();
+    Dnsenum *dnsenumWidget = new Dnsenum(this);
+    addToolTab(dnsenumWidget, "Dnsenum");
 }
 
 void widget::on_actionFfuf_triggered()
 {
-    currentScreen = new ffuf(this);
-    setupToolScreen(currentScreen);
-    currentScreen->show();
+    ffuf *ffufWidget = new ffuf(this);
+    addToolTab(ffufWidget, "Ffuf");
+}
+
+void widget::addToolTab(QWidget *toolWidget, const QString &label)
+{
+    // Add the tool widget as a new tab
+    tabWidget->addTab(toolWidget, label);
 }

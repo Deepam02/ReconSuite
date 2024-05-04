@@ -36,16 +36,14 @@ void traceroute::setupUI()
                                    "-F : Do not fragment packet"});
     commandDisplay = createLineEdit("Command will be displayed here");
     tcpCheckbox = new QCheckBox("Use TCP SYN for tracerouting", this);
+    udpCheckbox = new QCheckBox("Use UDP for tracerouting", this);
     portInput = createLineEdit("Port Number");
     portInput->setValidator(new QIntValidator(1, 65535, this)); // Port range validator
 }
 
 void traceroute::setupConnections()
 {
-    connect(modeComboBox,
-            QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this,
-            &traceroute::onModeChanged);
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &traceroute::onModeChanged);
     connect(traceButton, &QPushButton::clicked, this, &traceroute::executeCommand);
     connect(clearButton, &QPushButton::clicked, this, &traceroute::onClearButtonClicked);
     connect(domainInput, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
@@ -54,7 +52,6 @@ void traceroute::setupConnections()
             this,
             &traceroute::updateCommandDisplay);
     connect(optionInput, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
-    connect(portInput, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
     connect(commandDisplay, &QLineEdit::returnPressed, this, &traceroute::executeCommand);
     connect(optionInput,
             &QLineEdit::textChanged,
@@ -65,7 +62,8 @@ void traceroute::setupConnections()
             this,
             &traceroute::updateCommandDisplay);
     connect(tcpCheckbox, &QCheckBox::stateChanged, this, &traceroute::updateCommandDisplay);
-    connect(portInput, &QLineEdit::textChanged, this, &traceroute::updateCommandDisplay);
+    connect(udpCheckbox, &QCheckBox::stateChanged, this, &traceroute::updateCommandDisplay);
+    connect(portInput, &QLineEdit::returnPressed, this, &traceroute::executeCommand); // Add this line
 }
 
 void traceroute::setLayoutAndTitle()
@@ -77,6 +75,7 @@ void traceroute::setLayoutAndTitle()
     layout->addWidget(optionInput);
     layout->addWidget(commandDisplay);
     layout->addWidget(tcpCheckbox);
+    layout->addWidget(udpCheckbox);
     layout->addWidget(portInput);
     layout->addWidget(traceButton);
     layout->addWidget(clearButton);
@@ -120,7 +119,8 @@ void traceroute::onClearButtonClicked()
     domainInput->clear();
     optionInput->clear();
     commandDisplay->clear();
-    portInput->clear();
+    tcpCheckbox->setChecked(false);
+    udpCheckbox->setChecked(false);
 }
 
 void traceroute::executeCommand()
@@ -178,22 +178,51 @@ void traceroute::onModeChanged(int index)
     case 0:
         optionLabel->setVisible(false);
         optionInput->setVisible(false);
+        tcpCheckbox->setChecked(false); // Uncheck TCP checkbox
+        udpCheckbox->setChecked(false); // Uncheck UDP checkbox
+        tcpCheckbox->setEnabled(false); // Disable TCP checkbox
+        udpCheckbox->setEnabled(false); // Disable UDP checkbox
+        portInput->setEnabled(false);
         break;
     case 1:
-        optionLabel->setText("-m : Set the max number of hops");
-        optionLabel->setVisible(true);
-        optionInput->setVisible(true);
+        optionLabel->setVisible(false);
+        optionInput->setVisible(false);
+        tcpCheckbox->setChecked(false); // Uncheck TCP checkbox
+        udpCheckbox->setChecked(false); // Uncheck UDP checkbox
+        tcpCheckbox->setEnabled(true); // Disable TCP checkbox
+        udpCheckbox->setEnabled(true); // Disable UDP checkbox
+        portInput->setEnabled(true);
         break;
+
     case 2:
-        optionLabel->setText("-f : Start from the first TTL hop");
         optionLabel->setVisible(true);
         optionInput->setVisible(true);
+        tcpCheckbox->setChecked(false); // Uncheck TCP checkbox
+        udpCheckbox->setChecked(false); // Uncheck UDP checkbox
+        tcpCheckbox->setEnabled(false); // Disable TCP checkbox
+        udpCheckbox->setEnabled(false); // Disable UDP checkbox
+        portInput->setEnabled(false);
         break;
+
     case 3:
-        optionLabel->setText("-F : Do not fragment packet");
         optionLabel->setVisible(true);
         optionInput->setVisible(true);
+        tcpCheckbox->setChecked(false); // Uncheck TCP checkbox
+        udpCheckbox->setChecked(false); // Uncheck UDP checkbox
+        tcpCheckbox->setEnabled(false); // Disable TCP checkbox
+        udpCheckbox->setEnabled(false); // Disable UDP checkbox
+        portInput->setEnabled(false);
         break;
+
+    case 4:
+        optionLabel->setVisible(true);
+        optionInput->setVisible(true);
+        tcpCheckbox->setChecked(false); // Uncheck TCP checkbox
+        udpCheckbox->setChecked(false); // Uncheck UDP checkbox
+        tcpCheckbox->setEnabled(false); // Disable TCP checkbox
+        udpCheckbox->setEnabled(false); // Disable UDP checkbox
+        portInput->setEnabled(false);
+
     default:
         break;
     }
@@ -214,6 +243,14 @@ void traceroute::updateCommandDisplay()
             command += "-p " + portNumber + " ";
         } else {
             command += "-p 80 "; // Default port is 80
+        }
+    } else if (udpCheckbox->isChecked()) {
+        command += "-U ";
+        QString portNumber = portInput->text();
+        if (!portNumber.isEmpty()) {
+            command += "-p " + portNumber + " ";
+        } else {
+            command += "-p 53 "; // Default port is 53 for UDP
         }
     }
 

@@ -35,6 +35,7 @@ private:
     QComboBox *modeComboBox;
     QLineEdit *commandDisplay;
     QCheckBox *tcpCheckbox;
+    QCheckBox *udpCheckbox;
     QLineEdit *portInput;
 
     void setupUI();

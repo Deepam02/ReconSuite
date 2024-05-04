@@ -249,7 +249,12 @@ void ping::updateCommandDisplay()
     QString domain = domainInput->text();
     QString packetCountStr = packetCountInput->text();
     bool ok;
-    int count = packetCountStr.toInt(&ok);
+    int count =4;
+    if(!packetCountStr.isEmpty()){
+         count = packetCountStr.toInt(&ok);
+    }
+
+
 
     if (isValidInput(domain))
     {

@@ -3,35 +3,53 @@
 
 #include <QWidget>
 #include <QLineEdit>
+#include <QLabel>
 #include <QPushButton>
+#include <QComboBox>
 #include <QTextEdit>
+#include <QCheckBox>
 #include <QProcess>
+#include <QElapsedTimer>
+#include <QIntValidator>
+#include <QtConcurrent>
 
-// Include the generated UI header file
-#include "ui_dig.h"
+QT_BEGIN_NAMESPACE
+namespace Ui { class dig; }
+QT_END_NAMESPACE
 
-class DigTool : public QWidget
+class dig : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit DigTool(QWidget *parent = nullptr);
-    ~DigTool();
+    dig(QWidget *parent = nullptr);
+    ~dig();
 
 private slots:
-    void onDigButtonClicked();
     void onClearButtonClicked();
-    void updateOutput(const QString &result);
+    void executeCommand();
+    void onModeChanged();
+    void updateCommandDisplay();
 
 private:
-    Ui::dig *ui;  // Use the generated UI class
+    Ui::dig *ui;
     QLineEdit *domainInput;
+    QLineEdit *optionInput; // Add this line
+    QLabel *optionLabel;
+    QLineEdit *optionValue;
     QPushButton *digButton;
     QPushButton *clearButton;
     QTextEdit *outputArea;
-    QProcess *digProcess;
-
+    QComboBox *modeComboBox;
+    QLineEdit *commandDisplay;
+    QLineEdit *createLineEdit(const QString &placeholder);
+    QPushButton *createButton(const QString &text);
+    QComboBox *createComboBox(const QStringList &items);
     bool isValidInput(const QString &input);
+    void setLayoutAndTitle();
+    void setupUI();
+    void setupConnections();
+    void updateCommandOutput(const QString &result);
 };
 
 #endif // DIG_H

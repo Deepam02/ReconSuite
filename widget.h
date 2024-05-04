@@ -1,16 +1,14 @@
+// widget.h
 #ifndef WIDGET_H
 #define WIDGET_H
 
 #include <QMainWindow>
-#include <QGridLayout>
-#include <QPushButton>
-#include <QVBoxLayout>
+#include <QTabWidget>
+#include "ui_widget.h"
 #include <QSplitter>
 
 QT_BEGIN_NAMESPACE
-namespace Ui {
-class widget;
-}
+namespace Ui { class widget; }
 QT_END_NAMESPACE
 
 class widget : public QMainWindow
@@ -21,16 +19,7 @@ public:
     widget(QWidget *parent = nullptr);
     ~widget();
 
-private:
-    Ui::widget *ui;
-    QWidget *currentScreen;
-
-
-    // Declare the setupToolScreen method
-    void setupToolScreen(QWidget *toolScreen);
-
 private slots:
-
     void on_actionPing_triggered();
     void on_actionNmap_triggered();
     void on_actionTraceroute_triggered();
@@ -39,6 +28,14 @@ private slots:
     void on_actionWhois_triggered();
     void on_actionDnsenum_triggered();
     void on_actionFfuf_triggered();
+
+private:
+    Ui::widget *ui;
+    QTabWidget *tabWidget;
+    QSplitter *splitter;
+
+
+    void addToolTab(QWidget *toolWidget, const QString &label);
 };
 
 #endif // WIDGET_H
