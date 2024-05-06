@@ -4,14 +4,14 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QGridLayout>
-#include "ping.h"
-#include "nmap.h"
-#include "dig.h"
-#include "traceroute.h"
-#include "subfinder.h"
-#include "dnsenum.h"
-#include "whois.h"
-#include "ffuf.h"
+#include "../ping/ping.h"
+#include "../nmap/nmap.h"
+#include "../dig/dig.h"
+#include "../traceroute//traceroute.h"
+#include "../subfinder/subfinder.h"
+#include "../dnsenum/dnsenum.h"
+#include "../whois/whois.h"
+#include "../ffuf/ffuf.h"
 
 widget::widget(QWidget *parent)
     : QMainWindow(parent)

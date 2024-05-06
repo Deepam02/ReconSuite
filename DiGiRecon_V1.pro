@@ -1,56 +1,54 @@
-QT       += core gui concurrent network
-
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
-
+# Project configuration
+QT += core gui concurrent network widgets # Add necessary Qt modules
 CONFIG += c++17
 
-# You can make your code fail to compile if it uses deprecated APIs.
-# In order to do so, uncomment the following line.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+# Uncomment the following line if you want to disable deprecated APIs
+# DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
 
+# Source files
 SOURCES += \
-    dig.cpp \
-    dnsenum.cpp \
-    ffuf.cpp \
-    gui.cpp \
-    main.cpp \
-    nmap.cpp \
-    nslookup.cpp \
-    ping.cpp \
-    subfinder.cpp \
-    traceroute.cpp \
-    whois.cpp \
-    widget.cpp
+    src/dig/dig.cpp \
+    src/dnsenum/dnsenum.cpp \
+    src/ffuf/ffuf.cpp \
+    src/gui/gui.cpp \
+    src/main.cpp \
+    src/nmap/nmap.cpp \
+    src/ping/ping.cpp \
+    src/subfinder/subfinder.cpp \
+    src/traceroute/traceroute.cpp \
+    src/whois/whois.cpp \
+    src/widget/widget.cpp
 
+# Header files
 HEADERS += \
-    dig.h \
-    dnsenum.h \
-    ffuf.h \
-    gui.h \
-    nmap.h \
-    nslookup.h \
-    ping.h \
-    subfinder.h \
-    traceroute.h \
-    whois.h \
-    widget.h
+    src/dig/dig.h \
+    src/dnsenum/dnsenum.h \
+    src/ffuf/ffuf.h \
+    src/gui/gui.h \
+    src/nmap/nmap.h \
+    src/ping/ping.h \
+    src/subfinder/subfinder.h \
+    src/traceroute/traceroute.h \
+    src/whois/whois.h \
+    src/widget/widget.h
 
+# UI files
 FORMS += \
-    dig.ui \
-    dnsenum.ui \
-    ffuf.ui \
-    nmap.ui \
-    nslookup.ui \
-    ping.ui \
-    subfinder.ui \
-    traceroute.ui \
-    whois.ui \
-    widget.ui
+    src/dig/dig.ui \
+    src/dnsenum/dnsenum.ui \
+    src/ffuf/ffuf.ui \
+    src/nmap/nmap.ui \
+    src/ping/ping.ui \
+    src/subfinder/subfinder.ui \
+    src/traceroute/traceroute.ui \
+    src/whois/whois.ui \
+    src/widget/widget.ui
 
-# Default rules for deployment.
+# Deployment rules
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
+# Resource files
 RESOURCES += \
-    img.qrc
+    src/images/img.qrc
