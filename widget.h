@@ -28,6 +28,9 @@ private slots:
     void on_actionWhois_triggered();
     void on_actionDnsenum_triggered();
     void on_actionFfuf_triggered();
+    void on_tabWidget_tabCloseRequested(int index);
+
+
 
 private:
     Ui::widget *ui;

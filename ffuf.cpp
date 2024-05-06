@@ -70,6 +70,7 @@ void ffuf::browseWordlist() {
     }
 }
 
+
 void ffuf::generateSubdomainCommand() {
     QString url = urlInput->text();
     QString wordlist = wordlistInput->text();
@@ -79,20 +80,12 @@ void ffuf::generateSubdomainCommand() {
         return;
     }
 
-    QRegularExpression regex("[A-Za-z0-9-]+\.com");  // Regular expression to extract the subdomain
-    QRegularExpressionMatch match = regex.match(url);
-    if (!match.hasMatch()) {
-        QMessageBox::warning(this, "Error", "Invalid URL format. Please enter a valid URL.");
-        return;
-    }
+    // Replace "marketplace" with "FUZZ" in the URL
+    QString modifiedUrl = url.replace(QRegularExpression("https?://[^.]+"), "https://FUZZ");
 
-    QString subdomain = match.captured(1);
-    generatedCommand = QString("ffuf -u \"%1.FUZZ.%2\" -w \"%3\"").arg("https://").arg(subdomain).arg(wordlist);
+    generatedCommand = QString("ffuf -u \"%1\" -w \"%2\"").arg(modifiedUrl).arg(wordlist);
     generatedCommandText->setPlainText(generatedCommand);  // Display the generated command
 }
-
-
-
 
 void ffuf::generateDirectoryCommand() {
     QString url = urlInput->text();

@@ -22,8 +22,11 @@ widget::widget(QWidget *parent)
     // Create the tab widget
     tabWidget = new QTabWidget(this);
 
+
     // Set the size policy for the tab widget
     tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+
 
     // Set the tab widget as the central widget
     setCentralWidget(tabWidget);
@@ -68,6 +71,7 @@ widget::widget(QWidget *parent)
 
     // Set initial window size
     resize(800, 800);
+    connect(tabWidget, &QTabWidget::tabCloseRequested, this, &widget::on_tabWidget_tabCloseRequested);
 }
 
 
@@ -129,4 +133,20 @@ void widget::addToolTab(QWidget *toolWidget, const QString &label)
 {
     // Add the tool widget as a new tab
     tabWidget->addTab(toolWidget, label);
+    int newIndex = tabWidget->count() - 1; // Index of the newly added tab
+    tabWidget->setCurrentIndex(newIndex);
+    if (label == "Home") {
+        tabWidget->setMovable(false);
+        tabWidget->setTabsClosable(false);
+    }
+    else{
+        tabWidget->setMovable(true);
+        tabWidget->setTabsClosable(true);
+    }
 }
+
+void widget::on_tabWidget_tabCloseRequested(int index){
+
+    tabWidget->removeTab(index);
+}
+

@@ -1,50 +1,20 @@
 #include "subfinder.h"
 #include "ui_subfinder.h"
-#include <QRegularExpression>
 #include <QVBoxLayout>
+#include <QRegularExpressionValidator>
+#include <QComboBox>
+#include <QProcess>
+#include <QElapsedTimer>
+#include <QtConcurrent>
 
-Subfinder::Subfinder(QWidget *parent)
-    : QWidget(parent),
+Subfinder::Subfinder(QWidget *parent) :
+    QWidget(parent),
     ui(new Ui::Subfinder)
 {
     ui->setupUi(this);
-    resize(800, 650);
-
-    domainInput = new QLineEdit(this);
-    domainInput->setPlaceholderText("Enter domain");
-
-    findButton = new QPushButton("Find Subdomains", this);
-    clearButton = new QPushButton("Clear", this);
-    outputArea = new QTextEdit(this);
-    commandDisplay = new QLineEdit(this);
-    commandDisplay->setPlaceholderText("command will be displayed here");
-    subfinderProcess = new QProcess(this);
-
-    connect(findButton, &QPushButton::clicked, this, &Subfinder::onFindButtonClicked);
-    connect(clearButton, &QPushButton::clicked, this, &Subfinder::onClearButtonClicked);
-
-    connect(domainInput, &QLineEdit::returnPressed, this, &Subfinder::onFindButtonClicked);
-
-    connect(subfinderProcess, &QProcess::readyReadStandardOutput, [=]() {
-        outputArea->append(subfinderProcess->readAllStandardOutput());
-    });
-
-    connect(subfinderProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            [=](int exitCode, QProcess::ExitStatus exitStatus) {
-                outputArea->append("\nSubfinder command finished with exit code: " + QString::number(exitCode));
-                findButton->setDisabled(false);
-            });
-
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->addWidget(domainInput);
-    layout->addWidget(findButton);
-    layout->addWidget(clearButton);
-    layout->addWidget(commandDisplay);
-    layout->addWidget(outputArea);
-
-    setLayout(layout);
-    setWindowTitle("Subfinder Tool");
-    outputArea->setReadOnly(true);
+    setupUI();
+    setupConnections();
+    setLayoutAndTitle();
 }
 
 Subfinder::~Subfinder()
@@ -52,36 +22,66 @@ Subfinder::~Subfinder()
     delete ui;
 }
 
-bool Subfinder::isValidInput(const QString &input)
+void Subfinder::setupUI()
 {
-    static QRegularExpression domainPattern(
-        R"(^(?:(?:https?|ftp):\/\/)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z]{2,})+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?:\/[^\s]*)?$)"
-        );
+    domainInput = createLineEdit("Enter domain");
+    findButton = createButton("Find Subdomains");
+    clearButton = createButton("Clear");
+    outputArea = new QTextEdit(this);
+    commandDisplay = createLineEdit("Command will be displayed here");
 
-    return domainPattern.match(input).hasMatch();
+    modeComboBox = new QComboBox(this);
+    modeComboBox->addItem("Standard Mode");
+    modeComboBox->addItem("Brute Force Mode");
+    modeComboBox->addItem("Recursive Mode");
+    modeComboBox->addItem("Custom DNS Servers Mode");
+    modeComboBox->addItem("Output Formatting Options");
 }
 
-QString runSubfinder(const QString& domain) {
-    QString command = "subfinder -d " + domain;
-    QProcess subfinderProcess;
-    subfinderProcess.start("subfinder", QStringList() << "-d" << domain);
-    subfinderProcess.waitForFinished();
+void Subfinder::setupConnections()
+{
+    connect(findButton, &QPushButton::clicked, this, &Subfinder::onFindButtonClicked);
+    connect(clearButton, &QPushButton::clicked, this, &Subfinder::onClearButtonClicked);
+    connect(domainInput, &QLineEdit::textChanged, this, &Subfinder::updateCommandDisplay);
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Subfinder::onModeChanged);
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Subfinder::updateCommandDisplay);
+    connect(commandDisplay, &QLineEdit::returnPressed, this, &Subfinder::executeCommand);
+}
 
-    return subfinderProcess.readAllStandardOutput();
+void Subfinder::setLayoutAndTitle()
+{
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    layout->addWidget(domainInput);
+    layout->addWidget(modeComboBox);
+    layout->addWidget(findButton);
+    layout->addWidget(clearButton);
+    layout->addWidget(commandDisplay);
+    layout->addWidget(outputArea);
+    setLayout(layout);
+    setWindowTitle("Subfinder Tool");
+    outputArea->setReadOnly(true);
+}
+
+QLineEdit *Subfinder::createLineEdit(const QString &placeholder)
+{
+    QLineEdit *lineEdit = new QLineEdit(this);
+    lineEdit->setPlaceholderText(placeholder);
+    return lineEdit;
+}
+
+QPushButton *Subfinder::createButton(const QString &text)
+{
+    return new QPushButton(text, this);
 }
 
 void Subfinder::onFindButtonClicked()
 {
-    outputArea->clear();
-    outputArea->append("Finding subdomains... Please wait.");
-
     QString domain = domainInput->text();
-
     if (isValidInput(domain))
     {
-
-        QString result = runSubfinder(domain);
-        updateOutput(result);
+        QString command = generateCommand();
+        commandDisplay->setText(command);
+        executeCommand();
     }
     else
     {
@@ -89,17 +89,105 @@ void Subfinder::onFindButtonClicked()
     }
 }
 
-void Subfinder::updateOutput(const QString& result)
+void Subfinder::executeCommand()
 {
-    // Remove the "Finding subdomains..." message
-    outputArea->clear();
+    QString command = commandDisplay->text();
 
-    // Append the actual subfinder result
-    outputArea->append(result);
+    if (command.isEmpty())
+    {
+        outputArea->append("Command is empty.");
+        return;
+    }
+
+    outputArea->clear();
+    outputArea->append("Executing command: " + command);
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    QStringList args = command.split(" ");
+
+    QtConcurrent::run([=]() {
+        QProcess process;
+        QElapsedTimer timer;
+        timer.start();
+
+        process.start(args[0], args.mid(1));
+        process.waitForFinished();
+
+        int exitCode = process.exitCode();
+        QString output = process.readAllStandardOutput();
+        QString error = process.readAllStandardError();
+
+        if (exitCode != 0)
+        {
+            updateCommandOutput("Command execution failed with exit code: " + QString::number(exitCode));
+        }
+
+        if (!error.isEmpty())
+        {
+            updateCommandOutput("Error: " + error);
+        }
+        QApplication::restoreOverrideCursor();
+        updateCommandOutput("Output:\n" + output);
+
+
+        // Adding time measurement using QElapsedTimer
+        QString timeOutput = "Time taken: " + QString::number(timer.elapsed()) + " ms";
+        updateCommandOutput(timeOutput);
+    });
 }
+
 
 void Subfinder::onClearButtonClicked()
 {
     outputArea->clear();
     domainInput->clear();
+    commandDisplay->clear();
+}
+
+void Subfinder::updateCommandDisplay()
+{
+    QString command = generateCommand();
+    commandDisplay->setText(command);
+}
+
+void Subfinder::updateCommandOutput(const QString &result)
+{
+    outputArea->append(result);
+}
+
+QString Subfinder::generateCommand()
+{
+    QString domain = domainInput->text();
+    QString mode = modeComboBox->currentText();
+    QString command = "subfinder -d " + domain;
+
+    if (mode == "Brute Force Mode") {
+        command += " -b";
+    } else if (mode == "Recursive Mode") {
+        command += " -r";
+    } else if (mode == "Custom DNS Servers Mode") {
+        command += " -dns <custom_dns_server>";
+    } else if (mode == "Output Formatting Options") {
+        // Add options for output formatting (JSON, CSV, plaintext, etc.)
+        // Example: command += " -o json";
+    }
+
+    return command;
+}
+
+bool Subfinder::isValidInput(const QString &input)
+{
+    QRegularExpressionValidator validator(QRegularExpression("^(?:https?://)?(?:www\\.)?[^\\s/$.?#].[^\\s]*$"));
+    int pos = 0;
+    QString inputCopy = input;
+    if (validator.validate(inputCopy, pos) == QValidator::Acceptable)
+
+        return true;
+    else
+        return false;
+}
+
+void Subfinder::onModeChanged(int index)
+{
+    Q_UNUSED(index);
 }
