@@ -25,7 +25,7 @@ public:
 private:
     Ui::dig *ui;
 
-    QLineEdit *domainInput;
+    QLineEdit *domainOrIpInput; // Renamed to domainOrIpInput
     QLineEdit *optionInput;
     QLabel *optionLabel;
     QPushButton *digButton;
