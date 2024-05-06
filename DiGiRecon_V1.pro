@@ -12,6 +12,7 @@ SOURCES += \
     dig.cpp \
     dnsenum.cpp \
     ffuf.cpp \
+    gui.cpp \
     main.cpp \
     nmap.cpp \
     nslookup.cpp \
@@ -25,6 +26,7 @@ HEADERS += \
     dig.h \
     dnsenum.h \
     ffuf.h \
+    gui.h \
     nmap.h \
     nslookup.h \
     ping.h \
