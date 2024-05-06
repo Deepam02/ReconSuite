@@ -10,6 +10,7 @@
 #include <QCheckBox>
 #include <QHBoxLayout>
 
+
 namespace Ui {
 class Subfinder;
 }
@@ -29,12 +30,15 @@ private slots:
     void updateCommandDisplay();
     void onModeChanged(int index);
     void updateCommandOutput(const QString &result);
+    void showVerboseOutputAsTable(const QString& output);
+    void onCopyOutputClicked();
 
 private:
     Ui::Subfinder *ui;
     QLineEdit *domainInput;
     QPushButton *findButton;
     QPushButton *clearButton;
+    QPushButton *copyOutputButton;
     QTextEdit *outputArea;
     QLineEdit *commandDisplay;
     QComboBox *modeComboBox;
@@ -43,6 +47,7 @@ private:
     QCheckBox *allSourcesCheckBox;
     QCheckBox *fastCheckBox;
     QHBoxLayout *checkboxLayout;
+    QString lastExecutionOutput;
 
     QLineEdit *createLineEdit(const QString &placeholder);
     QPushButton *createButton(const QString &text);

@@ -7,6 +7,11 @@
 #include <QProcess>
 #include <QElapsedTimer>
 #include <QtConcurrent>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QHeaderView>
+#include <QClipboard>
+
 
 Subfinder::Subfinder(QWidget *parent) :
     QWidget(parent),
@@ -15,6 +20,7 @@ Subfinder::Subfinder(QWidget *parent) :
     ui->setupUi(this);
     setupUI();
     setupConnections();
+    QString lastExecutionOutput = "";
 
 }
 
@@ -26,6 +32,8 @@ void Subfinder::setupConnections()
     connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Subfinder::onModeChanged);
     connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Subfinder::updateCommandDisplay);
     connect(commandDisplay, &QLineEdit::returnPressed, this, &Subfinder::executeCommand);
+    connect(domainInput, &QLineEdit::returnPressed, this, &Subfinder::executeCommand);
+    connect(copyOutputButton, &QPushButton::clicked, this, &Subfinder::onCopyOutputClicked);
 }
 
 Subfinder::~Subfinder()
@@ -40,6 +48,8 @@ void Subfinder::setupUI()
     clearButton = createButton("Clear");
     outputArea = new QTextEdit(this);
     commandDisplay = createLineEdit("Command will be displayed here");
+    copyOutputButton = createButton("Copy Output");
+
 
     modeComboBox = new QComboBox(this);
     modeComboBox->addItem("Standard Mode");
@@ -64,6 +74,7 @@ void Subfinder::setupUI()
     checkboxLayout->addWidget(silentOutputCheckBox);
     checkboxLayout->addWidget(allSourcesCheckBox);
     checkboxLayout->addWidget(fastCheckBox);
+    checkboxLayout->addWidget(copyOutputButton);
 
     // Add more checkboxes as needed
 
@@ -113,6 +124,14 @@ void Subfinder::onFindButtonClicked()
     }
 }
 
+void Subfinder::onCopyOutputClicked()
+{
+    if (!lastExecutionOutput.isEmpty()) {
+        QApplication::clipboard()->setText(lastExecutionOutput);
+    }
+}
+
+
 void Subfinder::executeCommand()
 {
     QString command = commandDisplay->text();
@@ -125,7 +144,7 @@ void Subfinder::executeCommand()
 
     outputArea->clear();
     outputArea->append("Executing command: " + command);
-    QApplication::setOverrideCursor(Qt::WaitCursor);
+
 
     QStringList args = command.split(" ");
 
@@ -138,7 +157,10 @@ void Subfinder::executeCommand()
         process.waitForFinished();
 
         int exitCode = process.exitCode();
-        QString output = process.readAllStandardOutput();
+        QString output = process.readAllStandardOutput(); // Read output
+
+        lastExecutionOutput = output; // Update lastExecutionOutput
+
         QString error = process.readAllStandardError();
 
         if (exitCode != 0)
@@ -150,15 +172,63 @@ void Subfinder::executeCommand()
         {
             updateCommandOutput("Error: " + error);
         }
-        QApplication::restoreOverrideCursor();
-        updateCommandOutput("Output:\n" + output);
 
+        QString mode = modeComboBox->currentText();
+        if(mode=="Verbose Output"){
+            // Move GUI operation to the main thread
+            QMetaObject::invokeMethod(this, "showVerboseOutputAsTable", Qt::QueuedConnection, Q_ARG(QString, output));
+        } else {
+            // Move GUI operation to the main thread
+            QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection, Q_ARG(QString, "Output:\n" + output));
+        }
 
         // Adding time measurement using QElapsedTimer
         QString timeOutput = "Time taken: " + QString::number(timer.elapsed()) + " ms";
-        updateCommandOutput(timeOutput);
+        // Move GUI operation to the main thread
+        QMetaObject::invokeMethod(this, "updateCommandOutput", Qt::QueuedConnection, Q_ARG(QString, timeOutput));
     });
 }
+
+
+void Subfinder::showVerboseOutputAsTable(const QString& output)
+{
+    // Clear existing table data
+
+    outputArea->clear();
+
+    // Parse CSV data and display in a table
+    QStringList rows = output.split('\n');
+    QStringList header = {"Subdomain", "IP", "Source"};
+    QList<QStringList> rowData;
+
+    // Parsing remaining rows
+    for (const QString& row : rows) {
+        QStringList columns = row.split(',');
+        rowData.append(columns);
+    }
+
+    // Create table widget
+    QTableWidget* tableWidget = new QTableWidget(rowData.size(), header.size(), this);
+    tableWidget->setHorizontalHeaderLabels(header);
+    tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch); // Expand columns to fill the available space
+
+    // Populate table with data
+    for (int i = 0; i < rowData.size(); ++i) {
+        const QStringList& rowDataList = rowData[i];
+        for (int j = 0; j < rowDataList.size(); ++j) {
+            QTableWidgetItem* item = new QTableWidgetItem(rowDataList[j]);
+            tableWidget->setItem(i, j, item);
+        }
+    }
+
+    // Show table
+    QVBoxLayout *layout = new QVBoxLayout;
+    layout->addWidget(tableWidget);
+    outputArea->setLayout(layout);
+}
+
+
+
 
 
 void Subfinder::onClearButtonClicked()
@@ -166,6 +236,7 @@ void Subfinder::onClearButtonClicked()
     outputArea->clear();
     domainInput->clear();
     commandDisplay->clear();
+    lastExecutionOutput="";
 }
 
 void Subfinder::updateCommandDisplay()
@@ -200,6 +271,9 @@ QString Subfinder::generateCommand()
         }
         if(allSourcesCheckBox->isChecked()){
             command+=" -all";
+        }
+        if(silentOutputCheckBox->isChecked()){
+            command+=" -silent";
         }
     }
 

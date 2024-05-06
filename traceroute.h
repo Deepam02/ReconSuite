@@ -37,6 +37,7 @@ private:
     QCheckBox *tcpCheckbox;
     QCheckBox *udpCheckbox;
     QLineEdit *portInput;
+    QString lastExecutionOutput;
 
     void setupUI();
     void setupConnections();
