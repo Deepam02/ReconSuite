@@ -1,81 +1,144 @@
 #include "dnsenum.h"
 #include "ui_dnsenum.h"
 #include <QVBoxLayout>
+#include <QtConcurrent>
 
-Dnsenum::Dnsenum(QWidget *parent)
-    : QWidget(parent),
+dnsenum::dnsenum(QWidget *parent) :
+    QWidget(parent),
     ui(new Ui::dnsenum)
 {
     ui->setupUi(this);
-    resize(800, 650);
-
-    domainInput = new QLineEdit(this);
-    domainInput->setPlaceholderText("Enter domain name");
-
-    runButton = new QPushButton("Run", this);
-    clearButton = new QPushButton("Clear", this);
-    outputArea = new QTextEdit(this);
-    dnsenumProcess = new QProcess(this);
-
-    connect(runButton, &QPushButton::clicked, this, &Dnsenum::onRunButtonClicked);
-    connect(clearButton, &QPushButton::clicked, this, &Dnsenum::onClearButtonClicked);
-
-    connect(domainInput, &QLineEdit::returnPressed, this, &Dnsenum::onRunButtonClicked);
-
-    connect(dnsenumProcess, &QProcess::readyReadStandardOutput, [=]() {
-        outputArea->append(dnsenumProcess->readAllStandardOutput());
-    });
-
-    connect(dnsenumProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            [=](int exitCode, QProcess::ExitStatus exitStatus) {
-                outputArea->append("\nDNS enumeration finished with exit code: " + QString::number(exitCode));
-                runButton->setEnabled(true);
-            });
-
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->addWidget(domainInput);
-    layout->addWidget(runButton);
-    layout->addWidget(clearButton);
-    layout->addWidget(outputArea);
-
-    setLayout(layout);
-
-    setWindowTitle("DNS Enumeration Tool");
-    outputArea->setReadOnly(true);
+    setupUI();
+    setupConnections();
+    setLayoutAndTitle();
 }
 
-Dnsenum::~Dnsenum()
+dnsenum::~dnsenum()
 {
     delete ui;
 }
 
-bool Dnsenum::isValidInput(const QString &input)
+void dnsenum::setupUI()
 {
-    return !input.isEmpty();
+    domainInput = createLineEdit("Enter domain");
+    modeComboBox = createComboBox({"Standard Mode",
+                                   "--enum",
+                                   "--enum -f",
+                                   "--reverse",
+                                   "--zonetransfer",
+                                   "--enum --brute"});
+    commandDisplay = createLineEdit("Command will be displayed here");
+    enumerateButton = createButton("Enumerate");
+    clearButton = createButton("Clear");
+    outputArea = new QTextEdit(this);
 }
 
-void Dnsenum::onRunButtonClicked()
+void dnsenum::setupConnections()
 {
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &dnsenum::updateCommandDisplay);
+    connect(enumerateButton, &QPushButton::clicked, this, &dnsenum::executeCommand);
+    connect(clearButton, &QPushButton::clicked, this, &dnsenum::onClearButtonClicked);
+    connect(domainInput, &QLineEdit::returnPressed, this, &dnsenum::executeCommand);
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &dnsenum::updateCommandDisplay);
+    connect(commandDisplay, &QLineEdit::returnPressed, this, &dnsenum::executeCommand);
+
+    // Connect textChanged signal of domainInput to updateCommandDisplay slot
+    connect(domainInput, &QLineEdit::textChanged, this, &dnsenum::updateCommandDisplay);
+}
+
+
+void dnsenum::setLayoutAndTitle()
+{
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    layout->addWidget(modeComboBox);
+    layout->addWidget(domainInput);
+    layout->addWidget(commandDisplay);
+    layout->addWidget(enumerateButton);
+    layout->addWidget(clearButton);
+    layout->addWidget(outputArea);
+    layout->setContentsMargins(10, 10, 10, 10);
+
+    setLayout(layout);
+    setWindowTitle("DNS Enumeration Tool");
+    outputArea->setReadOnly(true);
+}
+
+QLineEdit *dnsenum::createLineEdit(const QString &placeholder)
+{
+    QLineEdit *lineEdit = new QLineEdit(this);
+    lineEdit->setPlaceholderText(placeholder);
+    return lineEdit;
+}
+
+QPushButton *dnsenum::createButton(const QString &text)
+{
+    return new QPushButton(text, this);
+}
+
+QComboBox *dnsenum::createComboBox(const QStringList &items)
+{
+    QComboBox *comboBox = new QComboBox(this);
+    comboBox->addItems(items);
+    return comboBox;
+}
+
+void dnsenum::updateCommandDisplay()
+{
+    QString domain = domainInput->text();
+    QString option = modeComboBox->currentText();
+    QString command;
+
+    if (option == "Standard Mode") {
+        command = "dnsenum " + domain;
+    } else if (option == "--enum") {
+        command = "dnsenum --enum " + domain;
+    } else if (option == "--enum -f") {
+        command = "dnsenum --enum -f " + domain;
+    } else if (option == "--reverse") {
+        command = "dnsenum --reverse " + domain;
+    } else if (option == "--zonetransfer") {
+        command = "dnsenum --zonetransfer " + domain;
+    } else if (option == "--enum --brute") {
+        command = "dnsenum --enum --brute " + domain;
+    }
+
+    commandDisplay->setText(command);
+}
+
+
+void dnsenum::executeCommand()
+{
+    QString command = commandDisplay->text();
+
+    if (command.isEmpty()) {
+        outputArea->append("Command is empty.");
+        return;
+    }
 
     outputArea->clear();
+    outputArea->append("Executing command: " + command);
+    QApplication::setOverrideCursor(Qt::WaitCursor);
 
-    QString domain = domainInput->text();
-
-    if (isValidInput(domain))
-    {
-        QStringList enumArguments;
-        enumArguments << domain;
-        dnsenumProcess->start("dnsenum", enumArguments);
-    }
-    else
-    {
-        outputArea->append("Enter a valid domain name");
-
-    }
+    QtConcurrent::run([=]() {
+        QProcess process;
+        process.start(command);
+        process.waitForFinished();
+        QString output = process.readAllStandardOutput();
+        QString error = process.readAllStandardError();
+        updateCommandOutput(output);
+        updateCommandOutput(error);
+        QApplication::restoreOverrideCursor();
+    });
 }
 
-void Dnsenum::onClearButtonClicked()
+void dnsenum::onClearButtonClicked()
 {
     outputArea->clear();
     domainInput->clear();
+    commandDisplay->clear();
+}
+
+void dnsenum::updateCommandOutput(const QString &result)
+{
+    outputArea->append(result);
 }

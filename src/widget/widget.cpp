@@ -119,7 +119,7 @@ void widget::on_actionWhois_triggered()
 
 void widget::on_actionDnsenum_triggered()
 {
-    Dnsenum *dnsenumWidget = new Dnsenum(this);
+    dnsenum *dnsenumWidget = new dnsenum(this);
     addToolTab(dnsenumWidget, "Dnsenum");
 }
 
