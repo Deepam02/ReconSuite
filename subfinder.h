@@ -7,6 +7,8 @@
 #include <QTextEdit>
 #include <QProcess>
 #include <QComboBox>
+#include <QCheckBox>
+#include <QHBoxLayout>
 
 namespace Ui {
 class Subfinder;
@@ -36,9 +38,15 @@ private:
     QTextEdit *outputArea;
     QLineEdit *commandDisplay;
     QComboBox *modeComboBox;
+    QCheckBox *pingProbeCheckBox;
+    QCheckBox *silentOutputCheckBox;
+    QCheckBox *allSourcesCheckBox;
+    QCheckBox *fastCheckBox;
+    QHBoxLayout *checkboxLayout;
 
     QLineEdit *createLineEdit(const QString &placeholder);
     QPushButton *createButton(const QString &text);
+    QCheckBox *createCheckBox(const QString &text);
 
     void setupUI();
     void setupConnections();

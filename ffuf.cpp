@@ -147,6 +147,7 @@ void ffuf::executeCommand(const QString &command) {
     // Perform an HTTP request to check if the URL is active
     QNetworkAccessManager manager;
     QNetworkRequest request((QUrl(urlPart)));
+
     QNetworkReply *reply = manager.get(request);
     QEventLoop loop;
     connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);

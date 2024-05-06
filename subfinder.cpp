@@ -1,6 +1,7 @@
 #include "subfinder.h"
 #include "ui_subfinder.h"
 #include <QVBoxLayout>
+#include <QHBoxLayout> // Include for QHBoxLayout
 #include <QRegularExpressionValidator>
 #include <QComboBox>
 #include <QProcess>
@@ -14,7 +15,17 @@ Subfinder::Subfinder(QWidget *parent) :
     ui->setupUi(this);
     setupUI();
     setupConnections();
-    setLayoutAndTitle();
+
+}
+
+void Subfinder::setupConnections()
+{
+    connect(findButton, &QPushButton::clicked, this, &Subfinder::onFindButtonClicked);
+    connect(clearButton, &QPushButton::clicked, this, &Subfinder::onClearButtonClicked);
+    connect(domainInput, &QLineEdit::textChanged, this, &Subfinder::updateCommandDisplay);
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Subfinder::onModeChanged);
+    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Subfinder::updateCommandDisplay);
+    connect(commandDisplay, &QLineEdit::returnPressed, this, &Subfinder::executeCommand);
 }
 
 Subfinder::~Subfinder()
@@ -32,27 +43,35 @@ void Subfinder::setupUI()
 
     modeComboBox = new QComboBox(this);
     modeComboBox->addItem("Standard Mode");
-    modeComboBox->addItem("Brute Force Mode");
-    modeComboBox->addItem("Recursive Mode");
-    modeComboBox->addItem("Custom DNS Servers Mode");
-    modeComboBox->addItem("Output Formatting Options");
-}
+    modeComboBox->addItem("Thorough Scan");
+    modeComboBox->addItem("Fast & Thorough Scan");
+    modeComboBox->addItem("Verbose Output");
+    modeComboBox->addItem("Custom Mode");
+    // Create checkboxes and add them to a horizontal layout
+    QHBoxLayout *checkboxLayout = new QHBoxLayout;
+    pingProbeCheckBox = createCheckBox("Active Subdomain Checker");
+    silentOutputCheckBox = createCheckBox("Silent Output");
+    allSourcesCheckBox = createCheckBox("All Sources");
+    fastCheckBox = createCheckBox("Fast Scan");
+    // Add more checkboxes as needed
 
-void Subfinder::setupConnections()
-{
-    connect(findButton, &QPushButton::clicked, this, &Subfinder::onFindButtonClicked);
-    connect(clearButton, &QPushButton::clicked, this, &Subfinder::onClearButtonClicked);
-    connect(domainInput, &QLineEdit::textChanged, this, &Subfinder::updateCommandDisplay);
-    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Subfinder::onModeChanged);
-    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Subfinder::updateCommandDisplay);
-    connect(commandDisplay, &QLineEdit::returnPressed, this, &Subfinder::executeCommand);
-}
+    pingProbeCheckBox->setEnabled(false);
+    silentOutputCheckBox->setEnabled(false);
+    allSourcesCheckBox->setEnabled(false);
+    fastCheckBox->setEnabled(false);
 
-void Subfinder::setLayoutAndTitle()
-{
+    checkboxLayout->addWidget(pingProbeCheckBox);
+    checkboxLayout->addWidget(silentOutputCheckBox);
+    checkboxLayout->addWidget(allSourcesCheckBox);
+    checkboxLayout->addWidget(fastCheckBox);
+
+    // Add more checkboxes as needed
+
+    // Create a vertical layout for the entire UI
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->addWidget(domainInput);
     layout->addWidget(modeComboBox);
+    layout->addLayout(checkboxLayout); // Add the checkbox layout
     layout->addWidget(findButton);
     layout->addWidget(clearButton);
     layout->addWidget(commandDisplay);
@@ -60,6 +79,11 @@ void Subfinder::setLayoutAndTitle()
     setLayout(layout);
     setWindowTitle("Subfinder Tool");
     outputArea->setReadOnly(true);
+}
+
+QCheckBox *Subfinder::createCheckBox(const QString &text)
+{
+    return new QCheckBox(text, this);
 }
 
 QLineEdit *Subfinder::createLineEdit(const QString &placeholder)
@@ -161,15 +185,22 @@ QString Subfinder::generateCommand()
     QString mode = modeComboBox->currentText();
     QString command = "subfinder -d " + domain;
 
-    if (mode == "Brute Force Mode") {
-        command += " -b";
-    } else if (mode == "Recursive Mode") {
-        command += " -r";
-    } else if (mode == "Custom DNS Servers Mode") {
-        command += " -dns <custom_dns_server>";
-    } else if (mode == "Output Formatting Options") {
-        // Add options for output formatting (JSON, CSV, plaintext, etc.)
-        // Example: command += " -o json";
+    if (mode == "Thorough Scan") {
+        command += " -all";
+    } else if (mode == "Fast & Thorough Scan") {
+        command += " -all -r 8.8.8.8";
+    } else if (mode == "Verbose Output") {
+        command += " -ip -nW";
+    } else{
+        if(pingProbeCheckBox->isChecked()){
+            command+=" -nW";
+        }
+        if(fastCheckBox->isChecked()){
+            command+=" -r 8.8.8.8";
+        }
+        if(allSourcesCheckBox->isChecked()){
+            command+=" -all";
+        }
     }
 
     return command;
@@ -189,5 +220,18 @@ bool Subfinder::isValidInput(const QString &input)
 
 void Subfinder::onModeChanged(int index)
 {
+    QString mode = modeComboBox->currentText();
+    if (!(mode =="Custom Mode")){
+        pingProbeCheckBox->setEnabled(false);
+        silentOutputCheckBox->setEnabled(false);
+        allSourcesCheckBox->setEnabled(false);
+        fastCheckBox->setEnabled(false);
+    }
+    else {
+        pingProbeCheckBox->setEnabled(true);
+        silentOutputCheckBox->setEnabled(true);
+        allSourcesCheckBox->setEnabled(true);
+        fastCheckBox->setEnabled(true);
+    }
     Q_UNUSED(index);
 }
