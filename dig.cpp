@@ -102,7 +102,7 @@ void dig::updateCommandDisplay()
         command += domainOrIp + " +nssearch"; // Changed name
         optionLabel->setVisible(false);
         optionInput->setVisible(false);
-    } else if (option == "Reverse DNS Lookup") { // Added new option
+    } else if (option == "-x: Reverse DNS Lookup") { // Added new option
         command += "-x " + domainOrIp; // Changed name
         optionLabel->setVisible(false);
         optionInput->setVisible(false);
@@ -182,7 +182,7 @@ void dig::onModeChanged(int index)
     case 2:
     case 3:
     case 4:
-    case 5: // Added new case
+    case 5:
         optionLabel->setVisible(true);
         optionInput->setVisible(true);
         break;
