@@ -1,53 +1,72 @@
 #include "dig.h"
+#include "ui_dig.h"
 #include <QRegularExpression>
+#include <QVBoxLayout>
 #include <QApplication>
 #include <QtConcurrent>
-#include <QElapsedTimer>
-#include <QProcess>
-#include <QVBoxLayout>
-
 
 dig::dig(QWidget *parent)
     : QWidget(parent)
+    , ui(new Ui::dig)
 {
+    ui->setupUi(this);
     setupUI();
     setupConnections();
     setLayoutAndTitle();
 }
 
-dig::~dig()
-{
+dig::~dig(){
+    delete ui;
 }
 
-void dig::setupUI()
-{
+void dig::setupUI(){
     domainInput = createLineEdit("Enter domain");
-    modeComboBox = createComboBox({"Select Mode",
-                                   "Standard Mode",
-                                   "NS : To find name servers",
-                                   "+trace: delegation path to your DNS Zone",
-                                   "+nssearch: mail server for your domain"});
-    commandDisplay = createLineEdit("Command will be displayed here");
+    optionInput = createLineEdit("Option Value");
+    optionLabel = new QLabel("Option:", this);
+    optionLabel->setVisible(false);
+    optionInput->setVisible(false);
     digButton = createButton("Dig");
     clearButton = createButton("Clear");
     outputArea = new QTextEdit(this);
+    modeComboBox = createComboBox({"Select Mode",
+                                   "Standard Mode",
+                                   "NS : To find name servers",
+                                   "+trace: Delegation path to your DNS Zone",
+                                   "+nssearch: Mail server for your domain"});
+    commandDisplay = createLineEdit("Command will be displayed here");
 }
 
 void dig::setupConnections()
 {
-    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &dig::onModeChanged);
+    connect(modeComboBox,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &dig::onModeChanged);
     connect(digButton, &QPushButton::clicked, this, &dig::executeCommand);
     connect(clearButton, &QPushButton::clicked, this, &dig::onClearButtonClicked);
     connect(domainInput, &QLineEdit::returnPressed, this, &dig::executeCommand);
-    connect(modeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &dig::updateCommandDisplay);
+    connect(modeComboBox,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &dig::updateCommandDisplay);
+    connect(optionInput, &QLineEdit::returnPressed, this, &dig::executeCommand);
     connect(commandDisplay, &QLineEdit::returnPressed, this, &dig::executeCommand);
+    connect(optionInput,
+            &QLineEdit::textChanged,
+            this,
+            &dig::updateCommandDisplay);
+    connect(domainInput,
+            &QLineEdit::textChanged,
+            this,
+            &dig::updateCommandDisplay);
 }
 
-void dig::setLayoutAndTitle()
-{
+void dig::setLayoutAndTitle(){
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->addWidget(modeComboBox);
     layout->addWidget(domainInput);
+    layout->addWidget(optionLabel);
+    layout->addWidget(optionInput);
     layout->addWidget(commandDisplay);
     layout->addWidget(digButton);
     layout->addWidget(clearButton);
@@ -89,6 +108,7 @@ void dig::onClearButtonClicked()
 {
     outputArea->clear();
     domainInput->clear();
+    optionInput->clear();
     commandDisplay->clear();
 }
 
@@ -96,15 +116,14 @@ void dig::executeCommand()
 {
     QString command = commandDisplay->text();
 
-    if (command.isEmpty())
-    {
+    if (command.isEmpty()) {
         outputArea->append("Command is empty.");
         return;
     }
 
     outputArea->clear();
     outputArea->append("Executing command: " + command);
-    QApplication::setOverrideCursor(Qt::WaitCursor); // Use Qt::WaitCursor directly
+    QApplication::setOverrideCursor(Qt::WaitCursor);
 
     QStringList args = command.split(" ");
 
@@ -116,11 +135,16 @@ void dig::executeCommand()
         process.start(args[0], args.mid(1));
         process.waitForFinished();
 
+        int exitCode = process.exitCode();
         QString output = process.readAllStandardOutput();
         QString error = process.readAllStandardError();
 
-        if (!error.isEmpty())
-        {
+        if (exitCode != 0) {
+            updateCommandOutput("Command execution failed with exit code: "
+                                + QString::number(exitCode));
+        }
+
+        if (!error.isEmpty()) {
             updateCommandOutput("Error: " + error);
         }
         QApplication::restoreOverrideCursor();
@@ -130,6 +154,31 @@ void dig::executeCommand()
         QString timeOutput = "Time taken: " + QString::number(timer.elapsed()) + " ms";
         updateCommandOutput(timeOutput);
     });
+}
+
+void dig::updateCommandOutput(const QString &result)
+{
+    outputArea->append(result);
+}
+
+void dig::onModeChanged(int index)
+{
+    switch (index) {
+    case 0:
+        optionLabel->setVisible(false);
+        optionInput->setVisible(false);
+        break;
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+        optionLabel->setVisible(true);
+        optionInput->setVisible(true);
+        break;
+    default:
+        break;
+    }
+    updateCommandDisplay(); // Update the command display based on the mode change
 }
 
 void dig::updateCommandDisplay()
@@ -147,51 +196,15 @@ void dig::updateCommandDisplay()
         command += "NS " + domain;
         optionLabel->setVisible(false);
         optionInput->setVisible(false);
-    } else if (option == "+trace: delegation path to your DNS Zone") {
+    } else if (option == "+trace: Delegation path to your DNS Zone") {
         command += domain + " +trace";
         optionLabel->setVisible(false);
         optionInput->setVisible(false);
-    } else if (option == "+nssearch: mail server for your domain") {
+    } else if (option == "+nssearch: Mail server for your domain") {
         command += domain + " +nssearch";
         optionLabel->setVisible(false);
         optionInput->setVisible(false);
     }
 
-    commandDisplay->setText(command);
-}
-
-void dig::updateCommandOutput(const QString &result)
-{
-    outputArea->append(result);
-}
-
-void dig::onModeChanged(){
-    QString domain = domainInput->text();
-    QString option = modeComboBox->currentText();
-    QString command = "dig ";
-
-    if (option == "Select Mode")
-    {
-        commandDisplay->clear();
-        return;
-    }
-    else if (option == "Standard Mode"){
-        command += domain;
-        return;
-    }
-    else if (option == "NS : To find name servers"){
-        command += "NS " + domain;
-        return;
-    }
-    else if(option == "+trace: delegation path to your DNS Zone"){
-        command += domain + " +trace";
-        return;
-    }
-    else{
-        command += domain + " +nssearch";
-            return;
-
-
-    }
     commandDisplay->setText(command);
 }
