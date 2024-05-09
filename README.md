@@ -1,6 +1,7 @@
-Certainly! Here's the full README file content with proper formatting for copy-pasting:
+Your README is now properly formatted:
 
-```markdown
+---
+
 # ReconSuite
 
 ReconSuite is a comprehensive GUI (Graphical User Interface) application built using Qt C++ that integrates a suite of reconnaissance tools for network analysis and information gathering. This project aims to provide a user-friendly interface for common reconnaissance tasks, streamlining the process for both beginners and experienced users.
@@ -46,7 +47,7 @@ chmod +x <path_to_installer>
 1. Run Qt Creator.
 2. Select "Create Project" > "Import Project" > "Clone Repository".
 3. Paste the repository link: `https://github.com/Deepam02/ReconSuite.git`.
-4. Open the DigiRecon_V1.pro file in the project.
+4. Open the `DigiRecon_V1.pro` file in the project.
 5. Select "Build" > "Release" option and run.
 
 This will create a binary file, so you don't have to run Qt Creator to use ReconSuite.
@@ -65,5 +66,7 @@ sudo apt install build-essential
 ```
 
 Qt Creator should auto-detect the compiler after installing it. If it does not, select the compiler in "Manage Kits" in Project Mode.
-```
 
+--- 
+
+This should be much easier for others to read and follow. Let me know if you need further adjustments!
