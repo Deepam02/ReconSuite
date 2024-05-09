@@ -1,5 +1,3 @@
-Your README is now properly formatted:
-
 ---
 
 # ReconSuite
@@ -69,4 +67,3 @@ Qt Creator should auto-detect the compiler after installing it. If it does not, 
 
 --- 
 
-This should be much easier for others to read and follow. Let me know if you need further adjustments!
